@@ -16,6 +16,8 @@
   --on-primary: #fff;
   --ok: #1F8F7E;
   --hold: #E9A12B;
+  --ok-text: #17796A;    /* turunan teal, 5.28:1 di putih */
+  --hold-text: #96600A;  /* turunan saffron, 5.28:1 di putih */
   --sold: #BDB3B8;
   --bad: #B3261E;
   --grad: linear-gradient(135deg, #D93A2F 0%, #EE6A35 60%, #F4A23B 100%);
@@ -26,7 +28,7 @@
 :root[data-theme="dark"] {
   --bg: #1A1319; --surface: #251B24; --tint: #3A2229; --ink: #F8ECE8; --muted: #B9A8AE;
   --line: #3D2D36; --primary: #F0554A; --primary-d: #FFB4AB; --ok: #4CC2AE; --hold: #F2B84F;
-  --sold: #6A5D66; --bad: #FF8A80; --shadow: none;
+  --sold: #6A5D66; --bad: #FF8A80; --ok-text: #4CC2AE; --hold-text: #F2B84F; --shadow: none;
 }
 
 @theme inline {
@@ -114,16 +116,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .badge { display: inline-flex; gap: 6px; align-items: center; font: 600 12px "Plus Jakarta Sans", sans-serif; padding: 5px 12px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
 .badge .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-.badge-ok { color: var(--ok); }
-.badge-hold { color: var(--hold); }
+/* Warna status untuk TEKS kecil butuh turunan lebih gelap agar lolos 4.5:1;
+   warna kursi/status grafis tetap token asli guide (#1F8F7E / #E9A12B). */
+.badge-ok { color: var(--ok-text); }
+.badge-hold { color: var(--hold-text); }
 .badge-bad { color: var(--bad); }
 .badge-primary { color: var(--primary); }
 .badge-muted { color: var(--muted); }
 
 /* badge versi ringkas di daftar admin (§8 dashboard) */
 .vd { font: 700 11px "Plus Jakarta Sans", sans-serif; letter-spacing: .1em; padding: 4px 10px; border-radius: 99px; display: inline-block; }
-.vd-1 { background: color-mix(in srgb, var(--ok) 16%, var(--surface)); color: var(--ok); }
-.vd-2 { background: color-mix(in srgb, var(--hold) 18%, var(--surface)); color: var(--hold); }
+.vd-1 { background: color-mix(in srgb, var(--ok) 16%, var(--surface)); color: var(--ok-text); }
+.vd-2 { background: color-mix(in srgb, var(--hold) 18%, var(--surface)); color: var(--hold-text); }
 .vd-3 { background: var(--tint); color: var(--muted); }
 .vd-4 { background: color-mix(in srgb, var(--bad) 14%, var(--surface)); color: var(--bad); }
 
