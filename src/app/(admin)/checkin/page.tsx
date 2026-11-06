@@ -1,4 +1,3 @@
-import { PageHead } from "@/components/shared/PageHead";
 import { QrScanner } from "@/components/checkin/QrScanner";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -9,27 +8,25 @@ export const metadata = { title: "Check-in" };
 export default function CheckinPage() {
   return (
     <>
-      <PageHead
-        eyebrow="Check-in Management"
-        title={<>Pindai <em>e-ticket</em></>}
-        lead="Satu QR per order. Jumlah scan dibatasi jumlah tiket valid dalam order, bukan status pernah check-in (§8.6)."
-      />
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Check-in</h1>
+          <p className="page-lead">
+            Satu QR per order. Jumlah scan dibatasi jumlah tiket valid dalam order (§8.6).
+          </p>
+        </div>
+      </div>
 
       <QrScanner orders={orders.map((o) => ({ id: o.id, buyer: o.buyer, paymentStatus: o.paymentStatus }))} />
 
       <div className="section-head">
         <h2 className="section-title">Riwayat scan</h2>
+        <span className="sub">{scanLogs.length} scan</span>
       </div>
       <Card flush>
         <table className="table">
           <thead>
-            <tr>
-              <th>Waktu</th>
-              <th>Order</th>
-              <th>Tiket</th>
-              <th>Petugas</th>
-              <th>Hasil</th>
-            </tr>
+            <tr><th>Waktu</th><th>Order</th><th>Tiket</th><th>Petugas</th><th>Hasil</th></tr>
           </thead>
           <tbody>
             {scanLogs.map((s) => (

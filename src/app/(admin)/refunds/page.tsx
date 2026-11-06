@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { PageHead } from "@/components/shared/PageHead";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { orders, refunds, tickets } from "@/lib/data/admin";
@@ -13,20 +12,23 @@ const METHOD = { BANK: "Transfer bank", EWALLET: "E-wallet" } as const;
 export default function RefundsPage() {
   return (
     <>
-      <PageHead
-        eyebrow="Refund Management"
-        title={<>Kelola <em>refund</em></>}
-        lead="Pengajuan peserta dan refund akibat pembatalan event dalam satu daftar. Dana dikirim manual di luar sistem (§6.4 no.9–10)."
-      />
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Refund</h1>
+          <p className="page-lead">
+            Dana dikirim manual di luar sistem; sistem hanya mencatat status dan riwayat (§6.4 no.9–10).
+          </p>
+        </div>
+      </div>
 
-      <div className="stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+      <div className="stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
         {GROUPS.map((g) => {
           const list = refunds.filter((r) => r.status === g);
           return (
             <div className="stat" key={g}>
               <b>{list.length}</b>
               <span>{REFUND_STATUS_LABEL[g]}</span>
-              <div className="sub" style={{ marginTop: 6 }}>
+              <div className="sub mono" style={{ marginTop: 4 }}>
                 {rupiah(list.reduce((s, r) => s + r.amount, 0))}
               </div>
             </div>
@@ -36,20 +38,14 @@ export default function RefundsPage() {
 
       <div className="section-head">
         <h2 className="section-title">Semua pengajuan</h2>
+        <span className="sub">{refunds.length} baris</span>
       </div>
-
       <Card flush>
         <table className="table">
           <thead>
             <tr>
-              <th>Refund</th>
-              <th>Peserta</th>
-              <th>Order / Tiket</th>
-              <th className="num">Nominal</th>
-              <th>Sumber</th>
-              <th>Metode</th>
-              <th>Status</th>
-              <th />
+              <th>Refund</th><th>Peserta</th><th>Order / Tiket</th><th className="num">Nominal</th>
+              <th>Sumber</th><th>Metode</th><th>Status</th><th />
             </tr>
           </thead>
           <tbody>
@@ -73,21 +69,15 @@ export default function RefundsPage() {
                     {r.method ? (
                       <>
                         {METHOD[r.method]}
-                        <div className="sub">
-                          {r.bank} · {r.accountNo}
-                        </div>
+                        <div className="sub">{r.bank} · {r.accountNo}</div>
                       </>
                     ) : (
                       <span className="muted">Belum diisi</span>
                     )}
                   </td>
-                  <td>
-                    <StatusBadge status={r.status} label={REFUND_STATUS_LABEL[r.status]} />
-                  </td>
+                  <td><StatusBadge status={r.status} label={REFUND_STATUS_LABEL[r.status]} /></td>
                   <td className="num">
-                    <Link href={`/refunds/${r.id}`} className="button button-secondary button-small">
-                      Tangani
-                    </Link>
+                    <Link href={`/refunds/${r.id}`} className="button button-secondary button-small">Tangani</Link>
                   </td>
                 </tr>
               );

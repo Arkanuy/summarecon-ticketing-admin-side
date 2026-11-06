@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { EventCard } from "@/components/event/EventCard";
-import { PageHead } from "@/components/shared/PageHead";
+import { EventRow } from "@/components/event/EventRow";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
+import { StatusBadge } from "@/components/ui/Badge";
 import { events, orders, refunds, tickets } from "@/lib/data/admin";
-import { eventTone, rupiah, ticketSummary } from "@/lib/utils";
+import { ORDER_STATUS_LABEL, REFUND_STATUS_LABEL, rupiah, ticketSummary } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
 
@@ -17,29 +16,29 @@ export default function DashboardPage() {
     .filter((o) => o.paymentStatus === "SUCCESS" || o.paymentStatus === "PARTIALLY_REFUNDED")
     .reduce((s, o) => s + o.total, 0);
   const checkedIn = tickets.filter((t) => t.attendance === "CHECKED_IN").length;
-  const openRefunds = refunds.filter((r) => OPEN_REFUND.includes(r.status)).length;
-  const activeEvents = events.filter((e) => e.published && e.status === "DIJUAL");
+  const openRefund = refunds.filter((r) => OPEN_REFUND.includes(r.status));
+  const recent = [...orders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
 
   return (
     <>
-      <PageHead
-        eyebrow="Summarecon Mall · Bandung"
-        title={<>Halo, <em>Admin</em></>}
-        lead={`${activeEvents.length} event aktif, ${sold} tiket terjual dari ${quota} kuota. Semua yang perlu ditangani hari ini ada di bawah.`}
-        actions={
-          <Link href="/events" className="button button-primary">
-            Kelola event <span aria-hidden="true">→</span>
-          </Link>
-        }
-      />
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Ringkasan hari ini</h1>
+          <p className="page-lead">
+            {events.filter((e) => e.published).length} event publik · {sold} tiket terjual dari {quota} kuota.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link href="/reports" className="button button-secondary">Laporan</Link>
+          <Link href="/events" className="button button-primary">+ Event baru</Link>
+        </div>
+      </div>
 
       <div className="stats">
-        <div className="stat">
+        <div className="stat stat-accent">
           <b>{sold.toLocaleString("id-ID")}</b>
           <span>Tiket terjual</span>
-          <div className="bar">
-            <i style={{ width: `${Math.round((sold / quota) * 100)}%` }} />
-          </div>
+          <div className="bar"><i style={{ width: `${Math.round((sold / quota) * 100)}%` }} /></div>
         </div>
         <div className="stat">
           <b>{rupiah(revenue)}</b>
@@ -50,53 +49,64 @@ export default function DashboardPage() {
           <span>Check-in</span>
         </div>
         <div className="stat">
-          <b>{openRefunds}</b>
+          <b>{openRefund.length}</b>
           <span>Refund menunggu</span>
         </div>
       </div>
 
       <div className="section-head">
-        <h2 className="section-title">Event yang dikelola</h2>
-        <span className="sub">{events.length} event · {activeEvents.length} dijual</span>
+        <h2 className="section-title">Event</h2>
+        <Link href="/events" className="back-link" style={{ margin: 0 }}>Kelola semua →</Link>
       </div>
+      {events.map((e) => <EventRow key={e.id} event={e} />)}
 
-      <div className="event-grid">
-        {events.map((event) => (
-          <EventCard key={event.id} event={event} tone={eventTone(event.category)} />
-        ))}
-      </div>
-
-      <div className="section-head">
-        <h2 className="section-title">Perlu tindakan</h2>
-      </div>
-
-      <div className="grid g2-even">
-        <Card>
-          <div className="card-head">
-            <h3 className="section-title" style={{ fontSize: 17 }}>Refund</h3>
-            <Badge tone="bad">{openRefunds} menunggu</Badge>
+      <div className="grid g2" style={{ marginTop: 22 }}>
+        <div>
+          <div className="section-head" style={{ marginTop: 0 }}>
+            <h2 className="section-title">Order terbaru</h2>
+            <Link href="/bookings" className="back-link" style={{ margin: 0 }}>Semua order →</Link>
           </div>
-          <p className="sub" style={{ fontSize: 12, lineHeight: 1.7 }}>
-            Termasuk refund akibat pembatalan event dan data rekening yang belum lengkap. Dana dikirim manual di luar
-            sistem.
-          </p>
-          <Link href="/refunds" className="button button-secondary button-small" style={{ marginTop: 14 }}>
-            Buka Refund Management
-          </Link>
-        </Card>
-        <Card>
-          <div className="card-head">
-            <h3 className="section-title" style={{ fontSize: 17 }}>Check-in</h3>
-            <Badge tone="ok">{checkedIn} hadir</Badge>
+          <Card flush>
+            <table className="table">
+              <thead>
+                <tr><th>Order</th><th>Pemesan</th><th>Status</th><th className="num">Total</th></tr>
+              </thead>
+              <tbody>
+                {recent.map((o) => (
+                  <tr key={o.id}>
+                    <td className="mono"><Link href={`/orders/${o.id}`}>{o.id}</Link></td>
+                    <td>{o.buyer}</td>
+                    <td><StatusBadge status={o.orderStatus} label={ORDER_STATUS_LABEL[o.orderStatus]} /></td>
+                    <td className="num mono">{rupiah(o.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+
+        <div>
+          <div className="section-head" style={{ marginTop: 0 }}>
+            <h2 className="section-title">Refund perlu tindakan</h2>
+            <Link href="/refunds" className="back-link" style={{ margin: 0 }}>Semua →</Link>
           </div>
-          <p className="sub" style={{ fontSize: 12, lineHeight: 1.7 }}>
-            Satu QR per order. Jumlah scan dibatasi tiket valid dalam order, jadi refund parsial ikut mengurangi kuota
-            scan.
-          </p>
-          <Link href="/checkin" className="button button-secondary button-small" style={{ marginTop: 14 }}>
-            Buka pemindai QR
-          </Link>
-        </Card>
+          <Card flush>
+            <table className="table">
+              <thead>
+                <tr><th>Refund</th><th>Status</th><th className="num">Nominal</th></tr>
+              </thead>
+              <tbody>
+                {openRefund.map((r) => (
+                  <tr key={r.id}>
+                    <td className="mono"><Link href={`/refunds/${r.id}`}>{r.id}</Link></td>
+                    <td><StatusBadge status={r.status} label={REFUND_STATUS_LABEL[r.status]} /></td>
+                    <td className="num mono">{rupiah(r.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </div>
       </div>
     </>
   );

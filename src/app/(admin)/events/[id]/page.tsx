@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PageHead } from "@/components/shared/PageHead";
 import { Card } from "@/components/ui/Card";
 import { Badge, StatusBadge, VersionBadge } from "@/components/ui/Badge";
 import { SeatBlocking } from "@/components/seat-map/SeatBlocking";
@@ -25,17 +24,20 @@ export default async function EventDetailPage({ params }: PageProps) {
     <>
       <Link href="/events" className="back-link">← Semua event</Link>
 
-      <PageHead
-        eyebrow={`${event.category} · ${BOOKING_MODE_LABEL[event.bookingMode]}`}
-        title={event.name}
-        lead={`${event.date} · ${event.time} · Summarecon Mall Bandung`}
-        actions={
-          <>
-            <VersionBadge status={event.status} label={EVENT_STATUS_LABEL[event.status]} />
-            <Badge tone={event.published ? "ok" : "muted"}>{event.published ? "Publik" : "Belum publik"}</Badge>
-          </>
-        }
-      />
+      <div className="page-head">
+        <div>
+          <span className="eyebrow">
+            <i className="eyebrow-line" />
+            {event.category} · {BOOKING_MODE_LABEL[event.bookingMode]}
+          </span>
+          <h1 className="page-title" style={{ marginTop: 6 }}>{event.name}</h1>
+          <p className="page-lead">{event.date} · {event.time} · Summarecon Mall Bandung</p>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <VersionBadge status={event.status} label={EVENT_STATUS_LABEL[event.status]} />
+          <Badge tone={event.published ? "ok" : "muted"}>{event.published ? "Publik" : "Belum publik"}</Badge>
+        </div>
+      </div>
 
       {event.bookingMode === "SEAT" && event.seats ? (
         <SeatBlocking eventId={event.id} seats={event.seats} rows={event.seatRows ?? []} cols={event.seatCols ?? 0} />

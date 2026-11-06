@@ -1,4 +1,3 @@
-import { PageHead } from "@/components/shared/PageHead";
 import { Card } from "@/components/ui/Card";
 import { events } from "@/lib/data/admin";
 import { rupiah } from "@/lib/utils";
@@ -7,34 +6,26 @@ export const metadata = { title: "Laporan" };
 
 export default function ReportsPage() {
   const rows = events.flatMap((e) =>
-    e.categories.map((c) => ({
-      event: e.name,
-      category: c.name,
-      price: c.price,
-      sold: c.sold,
-      quota: c.quota,
-      revenue: c.sold * c.price,
-    })),
+    e.categories.map((c) => ({ event: e.name, category: c.name, price: c.price, sold: c.sold, quota: c.quota, revenue: c.sold * c.price })),
   );
   const total = rows.reduce((s, r) => s + r.revenue, 0);
 
   return (
     <>
-      <PageHead
-        eyebrow="Dashboard & Reporting"
-        title={<>Laporan <em>penjualan</em></>}
-        lead="Rekap per event dan kategori tiket. Angka mengikuti data tiket yang terjual, bukan kuota."
-      />
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Laporan</h1>
+          <p className="page-lead">Rekap penjualan per event dan kategori tiket.</p>
+        </div>
+        <button type="button" className="button button-secondary">Ekspor CSV</button>
+      </div>
+
       <Card flush>
         <table className="table">
           <thead>
             <tr>
-              <th>Event</th>
-              <th>Kategori</th>
-              <th className="num">Harga</th>
-              <th className="num">Terjual</th>
-              <th className="num">Kuota</th>
-              <th className="num">Pendapatan</th>
+              <th>Event</th><th>Kategori</th><th className="num">Harga</th>
+              <th className="num">Terjual</th><th className="num">Kuota</th><th className="num">Pendapatan</th>
             </tr>
           </thead>
           <tbody>
@@ -49,17 +40,13 @@ export default function ReportsPage() {
               </tr>
             ))}
             <tr>
-              <td colSpan={5} className="t-name">
-                Total
-              </td>
+              <td colSpan={5} className="t-name">Total</td>
               <td className="num mono t-name">{rupiah(total)}</td>
             </tr>
           </tbody>
         </table>
       </Card>
-      <div className="note">
-        Angka dihitung dari data contoh. Laporan kehadiran menunggu data check-in tersambung ke database.
-      </div>
+      <div className="note">Angka dari data contoh. Laporan kehadiran menunggu data check-in tersambung ke database.</div>
     </>
   );
 }

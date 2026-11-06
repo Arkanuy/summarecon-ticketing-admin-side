@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PageHead } from "@/components/shared/PageHead";
 import { Card } from "@/components/ui/Card";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { PetalFan } from "@/components/shared/PetalMark";
@@ -32,18 +31,18 @@ export default async function OrderDetailPage({ params }: PageProps) {
     <>
       <Link href="/bookings" className="back-link">← Booking Management</Link>
 
-      <PageHead
-        eyebrow="Order"
-        title={order.id}
-        lead={`${order.buyer} · ${event?.name ?? "—"} · dibuat ${order.createdAt}`}
-        actions={
-          <>
-            <StatusBadge status={order.orderStatus} label={ORDER_STATUS_LABEL[order.orderStatus]} />
-            <StatusBadge status={order.paymentStatus} label={PAYMENT_STATUS_LABEL[order.paymentStatus]} />
-            <Badge tone="primary">{rupiah(order.total)}</Badge>
-          </>
-        }
-      />
+      <div className="page-head">
+        <div>
+          <span className="eyebrow"><i className="eyebrow-line" />Order</span>
+          <h1 className="page-title mono" style={{ marginTop: 6, fontSize: 19 }}>{order.id}</h1>
+          <p className="page-lead">{order.buyer} · {event?.name ?? "—"} · dibuat {order.createdAt}</p>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <StatusBadge status={order.orderStatus} label={ORDER_STATUS_LABEL[order.orderStatus]} />
+          <StatusBadge status={order.paymentStatus} label={PAYMENT_STATUS_LABEL[order.paymentStatus]} />
+          <Badge tone="primary">{rupiah(order.total)}</Badge>
+        </div>
+      </div>
 
       <div className="grid g2">
         <Card flush>

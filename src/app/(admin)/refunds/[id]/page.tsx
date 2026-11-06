@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PageHead } from "@/components/shared/PageHead";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { KeyValue } from "@/components/ui/KeyValue";
@@ -28,12 +27,17 @@ export default async function RefundDetailPage({ params }: PageProps) {
     <>
       <Link href="/refunds" className="back-link">← Refund Management</Link>
 
-      <PageHead
-        eyebrow={refund.source === "EVENT_CANCELLED" ? "Refund pembatalan event" : "Pengajuan peserta"}
-        title={refund.id}
-        lead={`${refund.orderId} / ${refund.ticketId} · diajukan ${refund.requestedAt}`}
-        actions={<StatusBadge status={refund.status} label={REFUND_STATUS_LABEL[refund.status]} />}
-      />
+      <div className="page-head">
+        <div>
+          <span className="eyebrow">
+            <i className="eyebrow-line" />
+            {refund.source === "EVENT_CANCELLED" ? "Refund pembatalan event" : "Pengajuan peserta"}
+          </span>
+          <h1 className="page-title mono" style={{ marginTop: 6, fontSize: 19 }}>{refund.id}</h1>
+          <p className="page-lead">{refund.orderId} / {refund.ticketId} · diajukan {refund.requestedAt}</p>
+        </div>
+        <StatusBadge status={refund.status} label={REFUND_STATUS_LABEL[refund.status]} />
+      </div>
 
       <div className="grid g2">
         <Card>
