@@ -12,8 +12,8 @@ const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? "Summarecon2026!";
 
 const prisma = new PrismaClient();
 
-const DUMMY_PATH =
-  process.env.DUMMY_JSON ?? resolve(process.cwd(), "..", "..", "..", "Downloads", "event_ticketing_venue_management_dummy_data.json");
+/* Salinan JSON ikut di repo supaya server mana pun bisa seed tanpa file eksternal. */
+const DUMMY_PATH = process.env.DUMMY_JSON ?? resolve(process.cwd(), "prisma", "seed-data.json");
 
 const raw = JSON.parse(readFileSync(DUMMY_PATH, "utf-8"));
 
