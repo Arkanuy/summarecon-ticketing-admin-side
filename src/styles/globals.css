@@ -1,0 +1,239 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
+
+/* Token persis dari Style Guide §2–§4. */
+:root {
+  --bg: #FFF8F5;
+  --surface: #FFFFFF;
+  --tint: #FDE9E4;
+  --ink: #2A1F2D;
+  --muted: #6E6270;
+  --line: #F0DCD6;
+  --primary: #D93A2F;
+  --primary-d: #8C1F2B;
+  --accent: #F4A23B;
+  --on-primary: #fff;
+  --ok: #1F8F7E;
+  --hold: #E9A12B;
+  --sold: #BDB3B8;
+  --bad: #B3261E;
+  --grad: linear-gradient(135deg, #D93A2F 0%, #EE6A35 60%, #F4A23B 100%);
+  --r: 16px;
+  --shadow: 0 6px 24px rgba(140, 31, 43, .10);
+}
+
+:root[data-theme="dark"] {
+  --bg: #1A1319; --surface: #251B24; --tint: #3A2229; --ink: #F8ECE8; --muted: #B9A8AE;
+  --line: #3D2D36; --primary: #F0554A; --primary-d: #FFB4AB; --ok: #4CC2AE; --hold: #F2B84F;
+  --sold: #6A5D66; --bad: #FF8A80; --shadow: none;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --font-sans: "DM Sans", sans-serif;
+  --font-display: "Plus Jakarta Sans", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "DM Sans", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+/* grain tipis di latar (§8) */
+body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .045; z-index: 1;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.8'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+button, input, select, textarea { font: inherit; }
+h1, h2, h3, h4, h5, h6 { font-family: "Plus Jakarta Sans", system-ui, sans-serif; margin: 0; letter-spacing: -.02em; }
+a { color: inherit; text-decoration: none; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid rgba(217, 58, 47, .38); outline-offset: 3px;
+}
+
+/* ---------- shell ---------- */
+.shell { display: grid; grid-template-columns: 256px minmax(0, 1fr); min-height: 100vh; position: relative; z-index: 2; }
+.sidebar {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  background: var(--surface); border-right: 1px solid var(--line);
+  padding: 20px 14px; display: flex; flex-direction: column; gap: 4px;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 6px 10px 18px; font-family: "Plus Jakarta Sans"; font-weight: 800; font-size: 16px; letter-spacing: -.03em; }
+.brand small { display: block; font-size: 10px; font-weight: 600; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; margin-top: 1px; }
+.nav-group { font-family: "Plus Jakarta Sans"; font-size: 11px; font-weight: 600; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); padding: 16px 10px 8px; }
+.nav-list { display: flex; flex-direction: column; gap: 2px; }
+.nav-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 10px 12px; border-radius: 12px; font-size: 15px; color: var(--ink); transition: background 150ms ease; }
+.nav-item:hover { background: var(--tint); }
+.nav-item[aria-current="page"] { background: var(--tint); color: var(--primary-d); font-weight: 700; }
+.nav-count { background: var(--primary); font-family: "Plus Jakarta Sans"; font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; display: grid; place-items: center; border-radius: 999px; padding: 0 6px; color: #fff; }
+.sidebar-foot { margin-top: auto; padding: 14px 10px 4px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
+
+.main { min-width: 0; padding: 20px 32px 56px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.who { font-size: 14px; color: var(--muted); }
+.who strong { color: var(--ink); font-family: "Plus Jakarta Sans"; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+/* ---------- primitives ---------- */
+.overline { font-family: "Plus Jakarta Sans"; font-size: 11px; font-weight: 600; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); }
+.page-title { font-size: 28px; font-weight: 700; line-height: 34px; margin: 6px 0 4px; }
+.page-lead { color: var(--muted); margin: 0; max-width: 66ch; }
+.section-title { font-size: 20px; font-weight: 600; line-height: 28px; }
+.back-link { font-size: 14px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.back-link:hover { color: var(--primary); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; box-shadow: var(--shadow); }
+.card.flush { padding: 0; overflow-x: auto; }
+.card.pad-lg { padding: 24px; }
+
+.btn { font: 600 15px "Plus Jakarta Sans", sans-serif; border: 0; border-radius: 999px; padding: 13px 24px; cursor: pointer; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background 150ms ease, transform 150ms ease; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-d); }
+.btn-tint { background: var(--tint); color: var(--primary-d); }
+.btn-tint:hover { background: color-mix(in srgb, var(--primary) 14%, var(--tint)); }
+.btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+.btn-outline:hover { background: var(--tint); }
+.btn-grad { background: var(--grad); color: #fff; }
+.btn:disabled { background: color-mix(in srgb, var(--sold) 40%, var(--surface)); color: var(--muted); border-color: transparent; cursor: not-allowed; }
+.btn-sm { padding: 9px 16px; min-height: 40px; font-size: 13px; }
+.btn-block { width: 100%; }
+
+.badge { display: inline-flex; gap: 6px; align-items: center; font: 600 12px "Plus Jakarta Sans", sans-serif; padding: 5px 12px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.badge .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.badge-ok { color: var(--ok); }
+.badge-hold { color: var(--hold); }
+.badge-bad { color: var(--bad); }
+.badge-primary { color: var(--primary); }
+.badge-muted { color: var(--muted); }
+
+/* badge versi ringkas di daftar admin (§8 dashboard) */
+.vd { font: 700 11px "Plus Jakarta Sans", sans-serif; letter-spacing: .1em; padding: 4px 10px; border-radius: 99px; display: inline-block; }
+.vd-1 { background: color-mix(in srgb, var(--ok) 16%, var(--surface)); color: var(--ok); }
+.vd-2 { background: color-mix(in srgb, var(--hold) 18%, var(--surface)); color: var(--hold); }
+.vd-3 { background: var(--tint); color: var(--muted); }
+.vd-4 { background: color-mix(in srgb, var(--bad) 14%, var(--surface)); color: var(--bad); }
+
+/* ---------- dashboard (mengikuti blok .adm di style guide) ---------- */
+.greeter { background: var(--tint); border-radius: var(--r); padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; gap: 16px; overflow: hidden; margin-bottom: 14px; }
+.greeter h1 { font-size: 22px; font-weight: 800; letter-spacing: -.03em; }
+.greeter p { margin: 2px 0 0; font-size: 14px; color: var(--muted); }
+.greeter-art { height: 84px; opacity: .7; color: var(--primary); flex: 0 0 auto; }
+
+.stats { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-bottom: 14px; }
+.stat { background: var(--tint); border-radius: 14px; padding: 14px; position: relative; }
+.stat:first-child { background: var(--grad); color: #fff; }
+.stat b { display: block; font: 800 24px "Plus Jakarta Sans", sans-serif; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; opacity: .85; }
+.stat:first-child span { opacity: .95; }
+
+.bar { height: 8px; border-radius: 99px; background: color-mix(in srgb, var(--primary) 14%, transparent); overflow: hidden; margin-top: 10px; }
+.bar i { display: block; height: 100%; background: var(--grad); border-radius: 99px; }
+
+.row-item { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 14px; background: var(--surface); }
+.row-item + .row-item { margin-top: 8px; }
+.row-item b { font-family: "Plus Jakarta Sans", sans-serif; font-size: 15px; }
+.row-item .sp { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.row-item:hover { border-color: color-mix(in srgb, var(--primary) 30%, var(--line)); }
+
+.tgl { appearance: none; width: 42px; height: 24px; border-radius: 99px; background: var(--sold); position: relative; cursor: pointer; margin: 0; border: 0; }
+.tgl::after { content: ""; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .2s ease; }
+.tgl:checked { background: var(--primary); }
+.tgl:checked::after { left: 21px; }
+
+/* ---------- tabel ---------- */
+.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table th { text-align: left; font-family: "Plus Jakarta Sans", sans-serif; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; padding: 12px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.table td { padding: 13px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr:hover { background: color-mix(in srgb, var(--tint) 55%, transparent); }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.table .t-name { font-family: "Plus Jakarta Sans", sans-serif; font-weight: 700; font-size: 14px; }
+.sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.muted { color: var(--muted); }
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { font: 600 13px "Plus Jakarta Sans", sans-serif; padding: 9px 16px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); cursor: pointer; min-height: 38px; }
+.chip:hover { border-color: var(--primary); }
+.chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.note { border-left: 4px solid var(--accent); background: var(--tint); border-radius: 0 14px 14px 0; padding: 12px 16px; font-size: 13px; margin: 16px 0; color: var(--ink); }
+.kv { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.kv:last-child { border-bottom: 0; }
+.kv dt { color: var(--muted); margin: 0; }
+.kv dd { margin: 0; font-weight: 500; text-align: right; }
+.empty { text-align: center; padding: 44px 16px; color: var(--muted); }
+
+/* ---------- seat map (§5) ---------- */
+.seatbox { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; box-shadow: var(--shadow); }
+.stage { background: var(--grad); color: #fff; border-radius: 10px 10px 40px 40px; padding: 8px; font: 700 12px "Plus Jakarta Sans", sans-serif; letter-spacing: .3em; margin: 0 auto 18px; max-width: 340px; text-align: center; }
+.seats { display: flex; flex-direction: column; gap: 6px; align-items: center; overflow-x: auto; padding-bottom: 4px; }
+.seats-row { display: flex; gap: 6px; align-items: center; }
+.seats-lbl { width: 22px; font: 600 12px "Plus Jakarta Sans", sans-serif; color: var(--muted); text-align: center; flex: 0 0 22px; }
+.s { width: 28px; height: 28px; border-radius: 8px 8px 5px 5px; border: 0; background: var(--ok); cursor: pointer; padding: 0; display: grid; place-items: center; color: #fff; font-size: 10px; font-weight: 700; transition: transform 150ms ease; }
+.s:hover:not(.sold):not(.hold) { transform: scale(1.1); }
+.s.hold { background: var(--hold); cursor: not-allowed; }
+.s.sold { background: var(--sold); cursor: not-allowed; }
+.s.blocked { background: repeating-linear-gradient(45deg, var(--sold), var(--sold) 3px, transparent 3px, transparent 6px); cursor: not-allowed; border: 1px solid color-mix(in srgb, var(--sold) 70%, var(--ink)); }
+.s.sel { background: var(--primary); outline: 3px solid var(--tint); transform: scale(1.1); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; font-size: 13px; margin-top: 14px; }
+.legend span { display: inline-flex; align-items: center; }
+.legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; margin-right: 6px; }
+.seat-sum { margin: 14px 0 0; text-align: center; font-family: "Plus Jakarta Sans", sans-serif; font-weight: 700; }
+
+/* ---------- e-ticket (§5) ---------- */
+.ticket { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); max-width: 380px; }
+.ticket .top { background: var(--grad); color: #fff; padding: 18px; position: relative; overflow: hidden; }
+.ticket .top small { letter-spacing: .25em; font-size: 11px; font-family: "Plus Jakarta Sans", sans-serif; font-weight: 700; }
+.ticket .top h3 { font-size: 22px; margin-top: 4px; }
+.ticket .top .meta { font-size: 13px; opacity: .95; margin-top: 2px; }
+.ticket .top .petal-bg { position: absolute; right: -14px; bottom: -22px; width: 150px; opacity: .35; }
+.ticket .mid { padding: 16px 18px; display: flex; justify-content: space-between; gap: 10px; border-bottom: 2px dashed var(--line); }
+.ticket .mid span { font-size: 12px; color: var(--muted); display: block; }
+.ticket .mid b { font-family: "Plus Jakarta Sans", sans-serif; font-size: 16px; }
+.ticket .qr { padding: 18px; display: flex; justify-content: center; }
+.qrb { width: 120px; height: 120px; border-radius: 10px; background: conic-gradient(var(--ink) 25%, transparent 0 50%, var(--ink) 0 75%, transparent 0) 0 0/24px 24px; opacity: .85; }
+
+/* ---------- hasil check-in (§5) ---------- */
+.res { border-radius: 14px; padding: 16px 18px; font-weight: 600; font-family: "Plus Jakarta Sans", sans-serif; font-size: 17px; display: flex; gap: 10px; align-items: center; }
+.res small { display: block; font-weight: 500; font-family: "DM Sans", sans-serif; font-size: 13px; opacity: .85; }
+.res.valid { background: color-mix(in srgb, var(--ok) 16%, var(--surface)); color: var(--ok); }
+.res.used { background: color-mix(in srgb, var(--hold) 18%, var(--surface)); color: var(--hold); }
+.res.invalid { background: color-mix(in srgb, var(--bad) 14%, var(--surface)); color: var(--bad); }
+.res-icon { font-size: 22px; line-height: 1; width: 26px; text-align: center; }
+
+/* form */
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.field label { font-size: 12px; color: var(--muted); font-weight: 500; }
+.field input, .field select, .field textarea { min-height: 48px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--primary); }
+
+.grid { display: grid; gap: 14px; }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- responsive ---------- */
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { position: fixed; inset: auto 0 0 0; height: auto; width: 100%; flex-direction: row; overflow-x: auto; border-right: 0; border-top: 1px solid var(--line); padding: 8px; z-index: 30; gap: 0; }
+  .brand, .nav-group, .sidebar-foot { display: none; }
+  .sidebar nav { display: flex; }
+  .nav-list { flex-direction: row; gap: 0; }
+  .nav-item { flex-direction: column; gap: 2px; min-width: 74px; font-size: 11px; min-height: 48px; padding: 6px 8px; text-align: center; }
+  .main { padding: 16px 16px 100px; }
+  .g2, .g3 { grid-template-columns: minmax(0, 1fr); }
+  .page-title { font-size: 24px; }
+  .greeter-art { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media print { .sidebar, .topbar, .no-print { display: none; } .main { padding: 0; } }
