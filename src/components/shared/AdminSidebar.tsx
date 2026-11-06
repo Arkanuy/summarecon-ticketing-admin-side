@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { NavLinks, type NavLink } from "@/components/shared/NavLinks";
+import { MobileTabBar, MobileDrawer } from "@/components/shared/MobileNav";
 
 const GROUPS: { title: string; items: NavLink[] }[] = [
   {
@@ -29,8 +30,12 @@ const GROUPS: { title: string; items: NavLink[] }[] = [
   },
 ];
 
+/** Empat tab utama untuk bottom bar ponsel; sisanya lewat tombol "Lainnya". */
+const TAB_HREFS = ["/", "/events", "/bookings", "/checkin"];
+
 export function AdminSidebar() {
   const [roleId, setRoleId] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -43,39 +48,53 @@ export function AdminSidebar() {
     };
   }, []);
 
-  /* Petugas check-in hanya melihat modul lapangan. */
-  const groups = roleId === "ROLE-CHECKIN" ? GROUPS.filter((g) => g.title === "Lapangan") : GROUPS;
+  const isOfficer = roleId === "ROLE-CHECKIN";
+  const groups = isOfficer ? GROUPS.filter((g) => g.title === "Lapangan") : GROUPS;
+  const all: NavLink[] = groups.flatMap((g) => g.items);
+  const tabs = all.filter((i) => TAB_HREFS.includes(i.href));
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-brand">
-        <span className="brand-mark">
-          <svg viewBox="-130 -135 260 145" aria-hidden="true">
-            {[-66, -44, -22, 0, 22, 44, 66].map((a) => (
-              <path key={a} d="M0 0C-26-34-24-84 0-118 24-84 26-34 0 0Z" transform={`rotate(${a})`} />
-            ))}
-          </svg>
-        </span>
-        <span>
-          <b>Summarecon</b>
-          <small>Admin</small>
-        </span>
-      </div>
+    <>
+      {/* Desktop: sidebar vertikal */}
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <span className="brand-mark">
+            <svg viewBox="-130 -135 260 145" aria-hidden="true">
+              {[-66, -44, -22, 0, 22, 44, 66].map((a) => (
+                <path key={a} d="M0 0C-26-34-24-84 0-118 24-84 26-34 0 0Z" transform={`rotate(${a})`} />
+              ))}
+            </svg>
+          </span>
+          <span>
+            <b>Summarecon</b>
+            <small>Admin</small>
+          </span>
+        </div>
 
-      <nav aria-label="Navigasi admin">
-        {groups.map((group) => (
-          <div key={group.title}>
-            <div className="nav-group">{group.title}</div>
-            <NavLinks items={group.items} />
-          </div>
-        ))}
-      </nav>
+        <nav aria-label="Navigasi admin">
+          {groups.map((group) => (
+            <div key={group.title}>
+              <div className="nav-group">{group.title}</div>
+              <NavLinks items={group.items} />
+            </div>
+          ))}
+        </nav>
 
-      <div className="sidebar-foot">
-        Summarecon Mall · Bandung
-        <br />
-        {roleId === "ROLE-CHECKIN" ? "Petugas check-in" : "Admin"}
-      </div>
-    </aside>
+        <div className="sidebar-foot">
+          Summarecon Mall · Bandung
+          <br />
+          {isOfficer ? "Petugas check-in" : "Admin"}
+        </div>
+      </aside>
+
+      {/* Ponsel: bottom tab bar + drawer untuk modul lain */}
+      <MobileTabBar tabs={tabs} allHrefs={all.map((i) => i.href)} onMore={() => setDrawer(true)} />
+      <MobileDrawer
+        open={drawer}
+        onClose={() => setDrawer(false)}
+        groups={groups}
+        footer={isOfficer ? "Petugas check-in" : "Admin"}
+      />
+    </>
   );
 }
