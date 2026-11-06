@@ -254,6 +254,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .venue-petal { width: auto; height: 22px; color: var(--purple); opacity: .55; }
 
+/* ---------- halaman login ---------- */
+.login-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(ellipse at 78% 30%, rgba(244,162,59,.16), transparent 46%), var(--paper); }
+.login-card { width: 100%; max-width: 400px; padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 6px 24px rgba(140,31,43,.1); }
+.login-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+.login-brand .brand-mark { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(135deg,#d93a2f,#ee6a35 60%,#f4a23b); }
+.login-brand .brand-mark svg { width: 26px; height: 26px; fill: var(--paper); }
+.login-brand b { display: block; font-family: "Plus Jakarta Sans", sans-serif; font-size: 16px; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; }
+.login-brand small { display: block; margin-top: 2px; color: var(--purple); font-family: "Plus Jakarta Sans", sans-serif; font-size: 9px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+.login-error { margin: 0 0 12px; padding: 9px 11px; border: 1px solid rgba(179,38,30,.28); border-radius: 9px; background: rgba(179,38,30,.08); color: var(--error); font-size: 12px; }
+.login-foot { margin: 16px 0 0; text-align: center; color: #9c8b91; font-size: 10px; letter-spacing: .06em; }
+.topbar-user-name { display: flex; flex-direction: column; line-height: 1.25; }
+.topbar-user-name small { color: var(--muted); font-size: 10px; font-weight: 500; }
+
 /* ---------- dark tweaks ---------- */
 :root[data-theme="dark"] .topbar { background: rgba(26,19,25,.88); }
 :root[data-theme="dark"] .table th { background: rgba(58,34,41,.5); }

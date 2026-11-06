@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, badRequest, fail, notFound } from "@/lib/api";
+import { requireAdmin } from "@/lib/auth/guard";
 
 /**
  * POST /api/checkin — scan QR order (§8.6).
@@ -9,6 +10,9 @@ import { ok, badRequest, fail, notFound } from "@/lib/api";
  * Ada unique(e_ticket_id, scan_sequence) sehingga dua petugas tidak bisa menulis nomor urut sama.
  */
 export async function POST(request: Request) {
+  const guard = await requireAdmin(request);
+  if ("response" in guard) return guard.response;
+
   const body = await request.json().catch(() => null);
   const qrHash = body?.qr_token_hash as string | undefined;
   const eventId = body?.event_id as string | undefined;

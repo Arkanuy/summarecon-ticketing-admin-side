@@ -34,8 +34,10 @@ const GROUPS: { title: string; items: Item[] }[] = [
 
 const isActive = (path: string, href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
-export function AdminSidebar() {
+export function AdminSidebar({ roleId = "ROLE-ADMIN", roleName = "ADMIN" }: { roleId?: string; roleName?: string }) {
   const [path, setPath] = useState("/");
+  /* Petugas check-in hanya melihat modul lapangan. Role dicek dari ID, bukan tebakan nama. */
+  const isOfficer = roleId === "ROLE-CHECKIN";
 
   /* Path dibaca di efek supaya layout server tidak menunggu URL (cacheComponents). */
   useEffect(() => {
@@ -62,7 +64,7 @@ export function AdminSidebar() {
       </div>
 
       <nav aria-label="Navigasi admin">
-        {GROUPS.map((g) => (
+        {(isOfficer ? GROUPS.filter((g) => g.title === "Lapangan") : GROUPS).map((g) => (
           <div key={g.title}>
             <div className="nav-group">{g.title}</div>
             <div className="nav-list">
@@ -88,7 +90,7 @@ export function AdminSidebar() {
       <div className="sidebar-foot">
         Summarecon Mall · Bandung
         <br />
-        Sesi prototipe
+        {isOfficer ? "Petugas check-in" : "Admin"}
       </div>
     </aside>
   );

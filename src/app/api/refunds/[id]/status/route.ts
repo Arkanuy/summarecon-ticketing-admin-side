@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, badRequest, conflict, notFound } from "@/lib/api";
+import { requireAdmin } from "@/lib/auth/guard";
 
 /** Transisi yang sah — menjaga agar admin tidak melompati persetujuan (§6.4). */
 const ALLOWED: Record<string, string[]> = {
@@ -17,6 +18,9 @@ const ALLOWED: Record<string, string[]> = {
  * Body: { to_status, actor_user_id, reason?, destination?, manual_transfer? }
  */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAdmin(request);
+  if ("response" in guard) return guard.response;
+
   const { id } = await params;
   const body = await request.json().catch(() => null);
   const toStatus = body?.to_status as string | undefined;

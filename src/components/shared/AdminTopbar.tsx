@@ -3,8 +3,22 @@
 import { useEffect, useState } from "react";
 
 /* Bar tipis: konteks halaman + aksi. Navigasi ada di sidebar. */
-export function AdminTopbar() {
+export function AdminTopbar({ userName = "Admin", roleId = "ROLE-ADMIN" }: { userName?: string; roleId?: string }) {
   const [dark, setDark] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const initials = userName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join("");
+
+  async function logout() {
+    setBusy(true);
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/login";
+  }
 
   useEffect(() => {
     setDark(document.documentElement.dataset.theme === "dark");
@@ -27,9 +41,15 @@ export function AdminTopbar() {
           {dark ? "\u2600" : "\u263e"}
         </button>
         <span className="topbar-user">
-          <span className="avatar">AP</span>
-          Arkan Pratama
+          <span className="avatar">{initials || "AD"}</span>
+          <span className="topbar-user-name">
+            {userName}
+            <small>{roleId === "ROLE-CHECKIN" ? "Petugas check-in" : "Admin"}</small>
+          </span>
         </span>
+        <button type="button" className="button button-secondary button-small" onClick={logout} disabled={busy}>
+          {busy ? "Keluar…" : "Keluar"}
+        </button>
       </div>
     </header>
   );

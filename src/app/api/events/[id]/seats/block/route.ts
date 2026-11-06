@@ -1,11 +1,15 @@
 import { prisma } from "@/lib/db";
 import { ok, badRequest, conflict, notFound } from "@/lib/api";
+import { requireAdmin } from "@/lib/auth/guard";
 
 /**
  * POST /api/events/:id/seats/block — blokir kursi operasional (§6.2 no.14–16).
  * Body: { event_seat_ids: string[], reason, blocked_by }
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAdmin(request);
+  if ("response" in guard) return guard.response;
+
   const { id: eventId } = await params;
   const body = await request.json().catch(() => null);
   const seatIds: string[] = Array.isArray(body?.event_seat_ids) ? body.event_seat_ids : [];
@@ -45,6 +49,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
 /** DELETE /api/events/:id/seats/block?seat_id= — lepas blokir. */
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAdmin(request);
+  if ("response" in guard) return guard.response;
+
   const { id: eventId } = await params;
   const seatId = new URL(request.url).searchParams.get("seat_id");
   if (!seatId) return badRequest("seat_id wajib diisi");

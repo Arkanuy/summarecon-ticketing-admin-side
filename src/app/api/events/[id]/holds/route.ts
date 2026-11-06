@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { ok, fail, badRequest } from "@/lib/api";
+import { requireAdmin, requireCustomer } from "@/lib/auth/guard";
 
 /**
  * POST /api/events/:id/holds — kunci kursi 10 menit.
@@ -10,6 +11,9 @@ import { ok, fail, badRequest } from "@/lib/api";
  * Kalau jumlah baris terpengaruh kurang dari yang diminta, seluruh transaksi dibatalkan (409).
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireCustomer(request);
+  if ("response" in guard) return guard.response;
+
   const { id: eventId } = await params;
   const body = await request.json().catch(() => null);
   const seatIds: string[] = Array.isArray(body?.event_seat_ids) ? body.event_seat_ids : [];
@@ -85,6 +89,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
 /** GET /api/events/:id/holds — daftar hold aktif untuk event. */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAdmin(_request);
+  if ("response" in guard) return guard.response;
+
   const { id: eventId } = await params;
   const holds = await prisma.bookingHold.findMany({
     where: { eventId, status: "ACTIVE" },

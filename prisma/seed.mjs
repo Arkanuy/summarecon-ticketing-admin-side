@@ -4,6 +4,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
+
+/* Password demo seragam supaya login bisa dicoba. Hash asli (bukan placeholder) karena
+   data dummy menyimpan "$2b$12$DUMMY_HASH_NOT_FOR_AUTH" yang tidak mungkin dipakai verifikasi. */
+const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? "Summarecon2026!";
 
 const prisma = new PrismaClient();
 
@@ -19,6 +24,7 @@ const num = (v) => (v === null || v === undefined ? 0 : Number(v));
 /* Urutan hapus mengikuti arah foreign key (anak dulu). */
 async function reset() {
   await prisma.$transaction([
+    prisma.session.deleteMany(),
     prisma.checkinRecord.deleteMany(),
     prisma.refundAdminAction.deleteMany(),
     prisma.refundStatusHistory.deleteMany(),
@@ -86,6 +92,7 @@ async function main() {
   const uniqRolePerm = [...new Map(rolePermRows.map((r) => [`${r.roleId}|${r.permissionId}`, r])).values()];
   await prisma.rolePermission.createMany({ data: uniqRolePerm });
 
+  const demoHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   await prisma.user.createMany({
     data: raw.users.map((u) => ({
       id: u.user_id,
@@ -93,7 +100,7 @@ async function main() {
       fullName: u.full_name,
       email: u.email,
       phoneNumber: u.phone_number ?? null,
-      passwordHash: u.password_hash,
+      passwordHash: demoHash,
       accountStatus: u.account_status ?? "ACTIVE",
       createdAt: dt(u.created_at) ?? new Date(),
     })),
@@ -578,6 +585,8 @@ async function main() {
     settings: settingCount,
   };
   console.log("Seed selesai:", counts);
+  console.log(`Akun demo (password: ${DEMO_PASSWORD}):`);
+  for (const u of raw.users) console.log(`  ${u.role_id.padEnd(20)} ${u.email}`);
 }
 
 main()
