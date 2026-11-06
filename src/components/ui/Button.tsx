@@ -1,21 +1,16 @@
 import type { ButtonHTMLAttributes } from "react";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "tint" | "outline" | "grad";
-  size?: "md" | "sm" | "block";
+  variant?: "primary" | "secondary" | "soft";
+  size?: "md" | "small" | "block";
 };
 
-const VARIANT = {
-  primary: "btn-primary",
-  tint: "btn-tint",
-  outline: "btn-outline",
-  grad: "btn-grad",
-} as const;
+const VARIANT = { primary: "button-primary", secondary: "button-secondary", soft: "button-soft" } as const;
 
 export function Button({ className = "", variant = "primary", size = "md", ...props }: ButtonProps) {
   return (
     <button
-      className={["btn", VARIANT[variant], size === "sm" ? "btn-sm" : "", size === "block" ? "btn-block" : "", className]
+      className={["button", VARIANT[variant], size === "small" ? "button-small" : "", size === "block" ? "button-block" : "", className]
         .filter(Boolean)
         .join(" ")}
       {...props}

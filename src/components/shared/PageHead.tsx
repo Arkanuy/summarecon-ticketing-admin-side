@@ -1,12 +1,32 @@
 import type { ReactNode } from "react";
 
-export function PageHead({ overline, title, lead, actions }: { overline?: string; title: string; lead?: string; actions?: ReactNode }) {
+/* Eyebrow bergaris + judul besar, mengikuti .booking-title-row di customer side. */
+export function PageHead({
+  eyebrow,
+  title,
+  lead,
+  actions,
+}: {
+  eyebrow?: string;
+  title: ReactNode;
+  lead?: string;
+  actions?: ReactNode;
+}) {
   return (
-    <header style={{ marginBottom: 20 }}>
-      {overline ? <div className="overline">{overline}</div> : null}
-      <h1 className="page-title">{title}</h1>
-      {lead ? <p className="page-lead">{lead}</p> : null}
-      {actions ? <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>{actions}</div> : null}
+    <header className="page-head">
+      {eyebrow ? (
+        <span className="eyebrow">
+          <i className="eyebrow-line" />
+          {eyebrow}
+        </span>
+      ) : null}
+      <div style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 className="page-title">{title}</h1>
+          {lead ? <p className="page-lead">{lead}</p> : null}
+        </div>
+        {actions ? <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>{actions}</div> : null}
+      </div>
     </header>
   );
 }

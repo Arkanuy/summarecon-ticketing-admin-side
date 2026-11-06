@@ -1,6 +1,6 @@
+import { PageHead } from "@/components/shared/PageHead";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
-import { PageHead } from "@/components/shared/PageHead";
 import { staff } from "@/lib/data/admin";
 
 export const metadata = { title: "Pengguna" };
@@ -9,8 +9,9 @@ export default function UsersPage() {
   return (
     <>
       <PageHead
-        title="User Management"
-        lead="Satu dashboard, hak akses per role. Petugas check-in memakai dashboard yang sama dengan akses terbatas (§4)."
+        eyebrow="User Management"
+        title={<>Akses <em>pengguna</em></>}
+        lead="Satu dashboard, hak akses per role. Petugas check-in memakai dashboard yang sama dengan wewenang terbatas (§4)."
       />
       <Card flush>
         <table className="table">
@@ -23,13 +24,13 @@ export default function UsersPage() {
             </tr>
           </thead>
           <tbody>
-            {staff.map((user) => (
-              <tr key={user.id}>
-                <td className="t-name">{user.name}</td>
-                <td className="mono">{user.email}</td>
-                <td>{user.role === "ADMIN" ? "Admin" : "Petugas check-in"}</td>
+            {staff.map((u) => (
+              <tr key={u.id}>
+                <td className="t-name">{u.name}</td>
+                <td className="mono">{u.email}</td>
+                <td>{u.role === "ADMIN" ? "Admin" : "Petugas check-in"}</td>
                 <td>
-                  <StatusBadge status={user.active ? "SUCCESS" : "EXPIRED"} label={user.active ? "Aktif" : "Nonaktif"} />
+                  <StatusBadge status={u.active ? "SUCCESS" : "EXPIRED"} label={u.active ? "Aktif" : "Nonaktif"} />
                 </td>
               </tr>
             ))}

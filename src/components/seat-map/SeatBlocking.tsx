@@ -11,13 +11,14 @@ const LABEL: Record<SeatStatus, string> = {
   blocked: "diblokir",
 };
 
-const NOTICE: Record<SeatStatus, string> = {
-  available: "Rp 350.000",
-  hold: "Rp 350.000",
-  sold: "Rp 350.000",
-  blocked: "Rp 350.000",
+const CLASS: Record<SeatStatus, string> = {
+  available: "",
+  hold: "seat-held",
+  sold: "seat-sold",
+  blocked: "seat-blocked",
 };
 
+/* Denah mengikuti .seat-panel customer: panggung busur, kursi 48px, legend 5 status. */
 export function SeatBlocking({
   eventId,
   seats,
@@ -32,11 +33,11 @@ export function SeatBlocking({
   const [state, setState] = useState<Record<string, SeatStatus>>(seats);
   const [selected, setSelected] = useState<string[]>([]);
 
-  const id = (row: string, n: number) => `${row}-${String(n).padStart(2, "0")}`;
+  const seatId = (row: string, n: number) => `${row}-${String(n).padStart(2, "0")}`;
   const toggle = (seat: string) =>
-    setSelected((prev) => (prev.includes(seat) ? prev.filter((x) => x !== seat) : [...prev, seat]));
+    setSelected((prev) => (prev.includes(seat) ? prev.filter((s) => s !== seat) : [...prev, seat]));
 
-  /* §6.2 no.14–16: kursi terjual atau sedang ditahan tidak boleh diblokir. */
+  /* §6.2 no.14–16: kursi terjual / ditahan tidak boleh diblokir. */
   const commit = (target: "blocked" | "available") => {
     setState((prev) => {
       const copy = { ...prev };
@@ -53,14 +54,14 @@ export function SeatBlocking({
   const blocked = Object.values(state).filter((s) => s === "blocked").length;
 
   return (
-    <div className="seatbox">
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+    <section className="seat-panel" aria-label={`Denah kursi ${eventId}`}>
+      <div className="card-head" style={{ marginBottom: 8 }}>
         <h2 className="section-title">Denah kursi</h2>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Button variant="outline" size="sm" disabled={!selected.length} onClick={() => commit("available")}>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Button variant="secondary" size="small" disabled={!selected.length} onClick={() => commit("available")}>
             Lepas blokir
           </Button>
-          <Button variant="primary" size="sm" disabled={!selected.length} onClick={() => commit("blocked")}>
+          <Button variant="primary" size="small" disabled={!selected.length} onClick={() => commit("blocked")}>
             Blokir kursi
           </Button>
         </div>
@@ -68,58 +69,48 @@ export function SeatBlocking({
 
       <div className="stage">PANGGUNG</div>
 
-      <div className="seats">
+      <div className="seat-map">
         {rows.map((row) => (
-          <div className="seats-row" key={`${eventId}-${row}`}>
-            <span className="seats-lbl">{row}</span>
-            {Array.from({ length: cols }, (_, index) => {
-              const n = index + 1;
-              const seat = id(row, n);
-              const status = state[seat] ?? "available";
-              const isSel = selected.includes(seat);
+          <div className="seat-row" key={`${eventId}-${row}`}>
+            <span className="row-label">{row}</span>
+            {Array.from({ length: cols }, (_, i) => {
+              const n = i + 1;
+              const id = seatId(row, n);
+              const status = state[id] ?? "available";
+              const isSel = selected.includes(id);
               return (
                 <button
-                  key={seat}
+                  key={id}
                   type="button"
-                  className={`s${status === "available" ? "" : ` ${status}`}${isSel ? " sel" : ""}`}
+                  className={`seat${CLASS[status] ? ` ${CLASS[status]}` : ""}${isSel ? " seat-selected" : ""}`}
                   aria-pressed={isSel}
-                  aria-label={`Kursi ${seat} ${LABEL[status]}`}
-                  title={`${seat} · ${LABEL[status]} · ${NOTICE[status]}`}
+                  aria-label={`Kursi ${id} ${LABEL[status]}`}
+                  title={`${id} · ${LABEL[status]}`}
                   disabled={status !== "available"}
-                  onClick={() => toggle(seat)}
-                />
+                  onClick={() => toggle(id)}
+                >
+                  {n}
+                </button>
               );
             })}
           </div>
         ))}
       </div>
 
-      <div className="legend">
-        <span>
-          <i style={{ background: "var(--ok)" }} /> Tersedia
-        </span>
-        <span>
-          <i style={{ background: "var(--hold)" }} /> Sedang dipesan
-        </span>
-        <span>
-          <i style={{ background: "var(--sold)" }} /> Terjual
-        </span>
-        <span>
-          <i style={{ background: "repeating-linear-gradient(45deg, var(--sold), var(--sold) 3px, transparent 3px, transparent 6px)", border: "1px solid var(--sold)" }} /> Diblokir
-        </span>
-        <span>
-          <i style={{ background: "var(--primary)" }} /> Pilihanmu
-        </span>
+      <div className="seat-legend">
+        <span><i className="legend-seat" /> Tersedia</span>
+        <span><i className="legend-seat legend-held" /> Sedang dipesan</span>
+        <span><i className="legend-seat legend-sold" /> Terjual</span>
+        <span><i className="legend-seat legend-blocked" /> Diblokir</span>
+        <span><i className="legend-seat legend-selected" /> Pilihanmu</span>
       </div>
 
       <p className="seat-sum">
         {selected.length ? `${selected.length} kursi dipilih · ${selected.sort().join(", ")}` : "Belum ada kursi dipilih"}
       </p>
-
-      <div className="note" style={{ marginBottom: 0 }}>
-        {blocked} kursi diblokir. Kursi terblokir tidak bisa dipilih peserta dan kapasitas area dihitung ulang (§6.2
-        no.14–16).
-      </div>
-    </div>
+      <p className="seat-note">
+        {blocked} kursi diblokir. Kursi terblokir tidak bisa dipilih peserta dan kapasitas area dihitung ulang.
+      </p>
+    </section>
   );
 }

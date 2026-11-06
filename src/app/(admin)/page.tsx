@@ -1,107 +1,103 @@
 import Link from "next/link";
-import { Card, StatCard } from "@/components/ui/Card";
-import { VersionBadge, Badge } from "@/components/ui/Badge";
-import { Petal } from "@/components/shared/PetalMark";
-import { PublishToggle } from "@/components/event/PublishToggle";
+import { EventCard } from "@/components/event/EventCard";
+import { PageHead } from "@/components/shared/PageHead";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { events, orders, refunds, tickets } from "@/lib/data/admin";
-import { EVENT_STATUS_LABEL, rupiah, ticketSummary } from "@/lib/utils";
+import { eventTone, rupiah, ticketSummary } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
 
 const OPEN_REFUND = ["REQUESTED", "UNDER_REVIEW", "APPROVED", "PROCESSING", "NEED_CONFIRMATION"];
 
 export default function DashboardPage() {
-  const sold = events.reduce((sum, e) => sum + ticketSummary(e.categories).sold, 0);
-  const quota = events.reduce((sum, e) => sum + ticketSummary(e.categories).quota, 0);
+  const sold = events.reduce((s, e) => s + ticketSummary(e.categories).sold, 0);
+  const quota = events.reduce((s, e) => s + ticketSummary(e.categories).quota, 0);
   const revenue = orders
     .filter((o) => o.paymentStatus === "SUCCESS" || o.paymentStatus === "PARTIALLY_REFUNDED")
-    .reduce((sum, o) => sum + o.total, 0);
+    .reduce((s, o) => s + o.total, 0);
   const checkedIn = tickets.filter((t) => t.attendance === "CHECKED_IN").length;
   const openRefunds = refunds.filter((r) => OPEN_REFUND.includes(r.status)).length;
   const activeEvents = events.filter((e) => e.published && e.status === "DIJUAL");
 
   return (
     <>
-      {/* Banner sapaan — pola .adm .gr pada style guide §9 */}
-      <div className="greeter">
-        <div>
-          <h1>Halo, Admin</h1>
-          <p>
-            {activeEvents.length} event aktif, {sold} tiket terjual dari {quota} kuota.
-          </p>
-        </div>
-        <Petal variant="fan" filled={false} stroke="currentColor" className="greeter-art" />
-      </div>
+      <PageHead
+        eyebrow="Summarecon Mall · Bandung"
+        title={<>Halo, <em>Admin</em></>}
+        lead={`${activeEvents.length} event aktif, ${sold} tiket terjual dari ${quota} kuota. Semua yang perlu ditangani hari ini ada di bawah.`}
+        actions={
+          <Link href="/events" className="button button-primary">
+            Kelola event <span aria-hidden="true">→</span>
+          </Link>
+        }
+      />
 
       <div className="stats">
-        <StatCard label="Tiket terjual" value={sold.toLocaleString("id-ID")} sub={`${Math.round((sold / quota) * 100)}% dari kuota`} progress={Math.round((sold / quota) * 100)} />
-        <StatCard label="Pendapatan" value={rupiah(revenue)} sub="order berbayar" />
-        <StatCard label="Check-in" value={String(checkedIn)} sub="peserta tercatat hadir" />
-        <StatCard label="Refund menunggu" value={String(openRefunds)} sub="perlu tindakan admin" />
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, margin: "26px 0 12px", flexWrap: "wrap" }}>
-        <h2 className="section-title">Event</h2>
-        <Link href="/events" className="back-link">
-          Kelola semua event →
-        </Link>
-      </div>
-
-      {events.map((event) => {
-        const summary = ticketSummary(event.categories);
-        return (
-          <div className="row-item" key={event.id}>
-            <div style={{ minWidth: 0 }}>
-              <Link href={`/events/${event.id}`}>
-                <b>{event.name}</b>
-              </Link>
-              <div className="sub">
-                {event.date} · {event.time} · {summary.sold}/{summary.quota} kursi
-              </div>
-            </div>
-            <div className="sp">
-              <VersionBadge status={event.status} label={EVENT_STATUS_LABEL[event.status]} />
-              <PublishToggle published={event.published} label={event.name} />
-            </div>
+        <div className="stat">
+          <b>{sold.toLocaleString("id-ID")}</b>
+          <span>Tiket terjual</span>
+          <div className="bar">
+            <i style={{ width: `${Math.round((sold / quota) * 100)}%` }} />
           </div>
-        );
-      })}
-
-      <div className="note">
-        Angka di atas dibaca dari data contoh <span className="mono">src/lib/data/admin.ts</span>. Saklar publikasi
-        memperbarui tampilan saja; hubungkan ke Server Action sebelum dipakai tim asli.
+        </div>
+        <div className="stat">
+          <b>{rupiah(revenue)}</b>
+          <span>Pendapatan</span>
+        </div>
+        <div className="stat">
+          <b>{checkedIn}</b>
+          <span>Check-in</span>
+        </div>
+        <div className="stat">
+          <b>{openRefunds}</b>
+          <span>Refund menunggu</span>
+        </div>
       </div>
 
-      <div className="grid g2" style={{ marginTop: 20 }}>
+      <div className="section-head">
+        <h2 className="section-title">Event yang dikelola</h2>
+        <span className="sub">{events.length} event · {activeEvents.length} dijual</span>
+      </div>
+
+      <div className="event-grid">
+        {events.map((event) => (
+          <EventCard key={event.id} event={event} tone={eventTone(event.category)} />
+        ))}
+      </div>
+
+      <div className="section-head">
+        <h2 className="section-title">Perlu tindakan</h2>
+      </div>
+
+      <div className="grid g2-even">
         <Card>
-          <div className="overline">Refund</div>
-          <h2 className="section-title" style={{ marginTop: 6 }}>
-            {openRefunds} pengajuan menunggu
-          </h2>
-          <p className="muted" style={{ fontSize: 14 }}>
-            Termasuk refund akibat pembatalan event dan data rekening yang belum lengkap.
+          <div className="card-head">
+            <h3 className="section-title" style={{ fontSize: 17 }}>Refund</h3>
+            <Badge tone="bad">{openRefunds} menunggu</Badge>
+          </div>
+          <p className="sub" style={{ fontSize: 12, lineHeight: 1.7 }}>
+            Termasuk refund akibat pembatalan event dan data rekening yang belum lengkap. Dana dikirim manual di luar
+            sistem.
           </p>
-          <Link href="/refunds" className="btn btn-tint btn-sm" style={{ marginTop: 10 }}>
+          <Link href="/refunds" className="button button-secondary button-small" style={{ marginTop: 14 }}>
             Buka Refund Management
           </Link>
         </Card>
         <Card>
-          <div className="overline">Check-in</div>
-          <h2 className="section-title" style={{ marginTop: 6 }}>
-            {checkedIn} peserta sudah masuk
-          </h2>
-          <p className="muted" style={{ fontSize: 14 }}>
-            Satu QR per order. Jumlah scan dibatasi tiket valid dalam order.
+          <div className="card-head">
+            <h3 className="section-title" style={{ fontSize: 17 }}>Check-in</h3>
+            <Badge tone="ok">{checkedIn} hadir</Badge>
+          </div>
+          <p className="sub" style={{ fontSize: 12, lineHeight: 1.7 }}>
+            Satu QR per order. Jumlah scan dibatasi tiket valid dalam order, jadi refund parsial ikut mengurangi kuota
+            scan.
           </p>
-          <Link href="/checkin" className="btn btn-tint btn-sm" style={{ marginTop: 10 }}>
+          <Link href="/checkin" className="button button-secondary button-small" style={{ marginTop: 14 }}>
             Buka pemindai QR
           </Link>
         </Card>
       </div>
-
-      <p style={{ marginTop: 18 }}>
-        <Badge tone="muted">Prototipe admin · satu dashboard, hak akses per role</Badge>
-      </p>
     </>
   );
 }

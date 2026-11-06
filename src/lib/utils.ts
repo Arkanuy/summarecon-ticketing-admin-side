@@ -112,3 +112,14 @@ export const ticketSummary = (categories: EventCategory[]) => {
   const sold = categories.reduce((sum, c) => sum + c.sold, 0);
   return { quota, sold, remaining: quota - sold };
 };
+
+/** Nada artistrip kartu event, dipetakan dari kategori. */
+export type EventTone = "musik" | "seminar" | "lifestyle" | "pameran";
+
+export const eventTone = (category: string): EventTone => {
+  const c = category.toLowerCase();
+  if (c.includes("musik") || c.includes("konser")) return "musik";
+  if (c.includes("seminar") || c.includes("workshop")) return "seminar";
+  if (c.includes("life") || c.includes("festival") || c.includes("kuliner")) return "lifestyle";
+  return "pameran";
+};

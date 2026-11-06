@@ -1,37 +1,44 @@
 import Link from "next/link";
+import { PageHead } from "@/components/shared/PageHead";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
-import { PageHead } from "@/components/shared/PageHead";
 import { orders, refunds, tickets } from "@/lib/data/admin";
 import { REFUND_STATUS_LABEL, rupiah } from "@/lib/utils";
 
 export const metadata = { title: "Refund" };
 
-const GROUPS = ["REQUESTED", "UNDER_REVIEW", "APPROVED", "PROCESSING", "NEED_CONFIRMATION", "COMPLETED", "REJECTED"] as const;
+const GROUPS = ["REQUESTED", "UNDER_REVIEW", "APPROVED", "PROCESSING", "NEED_CONFIRMATION"] as const;
 const METHOD = { BANK: "Transfer bank", EWALLET: "E-wallet" } as const;
 
 export default function RefundsPage() {
   return (
     <>
       <PageHead
-        title="Refund Management"
+        eyebrow="Refund Management"
+        title={<>Kelola <em>refund</em></>}
         lead="Pengajuan peserta dan refund akibat pembatalan event dalam satu daftar. Dana dikirim manual di luar sistem (§6.4 no.9–10)."
       />
 
-      <div className="stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
-        {GROUPS.slice(0, 5).map((group) => {
-          const list = refunds.filter((r) => r.status === group);
+      <div className="stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+        {GROUPS.map((g) => {
+          const list = refunds.filter((r) => r.status === g);
           return (
-            <div className="stat" key={group}>
-              <span>{REFUND_STATUS_LABEL[group]}</span>
+            <div className="stat" key={g}>
               <b>{list.length}</b>
-              <span style={{ display: "block", marginTop: 4 }}>{rupiah(list.reduce((s, r) => s + r.amount, 0))}</span>
+              <span>{REFUND_STATUS_LABEL[g]}</span>
+              <div className="sub" style={{ marginTop: 6 }}>
+                {rupiah(list.reduce((s, r) => s + r.amount, 0))}
+              </div>
             </div>
           );
         })}
       </div>
 
-      <Card flush style={{ marginTop: 14 }}>
+      <div className="section-head">
+        <h2 className="section-title">Semua pengajuan</h2>
+      </div>
+
+      <Card flush>
         <table className="table">
           <thead>
             <tr>
@@ -78,7 +85,7 @@ export default function RefundsPage() {
                     <StatusBadge status={r.status} label={REFUND_STATUS_LABEL[r.status]} />
                   </td>
                   <td className="num">
-                    <Link href={`/refunds/${r.id}`} className="btn btn-outline btn-sm">
+                    <Link href={`/refunds/${r.id}`} className="button button-secondary button-small">
                       Tangani
                     </Link>
                   </td>

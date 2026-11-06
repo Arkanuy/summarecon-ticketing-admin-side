@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Card } from "@/components/ui/Card";
-import { VersionBadge, Badge } from "@/components/ui/Badge";
+import { EventCard } from "@/components/event/EventCard";
 import { PageHead } from "@/components/shared/PageHead";
+import { Card } from "@/components/ui/Card";
+import { VersionBadge } from "@/components/ui/Badge";
 import { PublishToggle } from "@/components/event/PublishToggle";
 import { events } from "@/lib/data/admin";
-import { BOOKING_MODE_LABEL, EVENT_STATUS_LABEL, ticketSummary } from "@/lib/utils";
+import { BOOKING_MODE_LABEL, EVENT_STATUS_LABEL, eventTone, ticketSummary } from "@/lib/utils";
 
 export const metadata = { title: "Event" };
 
@@ -12,14 +13,25 @@ export default function EventsPage() {
   return (
     <>
       <PageHead
-        title="Event Management"
+        eyebrow="Event Management"
+        title={<>Semua <em>event</em></>}
         lead="Membuat, mengubah, dan memublikasikan event. Konfigurasi kursi dan kategori tiket ada di halaman kelola tiap event."
         actions={
-          <button className="btn btn-primary btn-sm" type="button">
+          <button type="button" className="button button-primary">
             + Event baru
           </button>
         }
       />
+
+      <div className="event-grid" style={{ marginBottom: 30 }}>
+        {events.map((event) => (
+          <EventCard key={event.id} event={event} tone={eventTone(event.category)} />
+        ))}
+      </div>
+
+      <div className="section-head">
+        <h2 className="section-title">Daftar ringkas</h2>
+      </div>
 
       <Card flush>
         <table className="table">
@@ -36,8 +48,7 @@ export default function EventsPage() {
           </thead>
           <tbody>
             {events.map((event) => {
-              const summary = ticketSummary(event.categories);
-              const pct = Math.round((summary.sold / summary.quota) * 100);
+              const s = ticketSummary(event.categories);
               return (
                 <tr key={event.id}>
                   <td>
@@ -52,19 +63,14 @@ export default function EventsPage() {
                   <td>
                     <VersionBadge status={event.status} label={EVENT_STATUS_LABEL[event.status]} />
                   </td>
-                  <td className="num">
-                    <div className="mono">
-                      {summary.sold}/{summary.quota}
-                    </div>
-                    <div className="bar" style={{ width: 84, marginLeft: "auto" }}>
-                      <i style={{ width: `${pct}%` }} />
-                    </div>
+                  <td className="num mono">
+                    {s.sold}/{s.quota}
                   </td>
                   <td>
                     <PublishToggle published={event.published} label={event.name} />
                   </td>
                   <td className="num">
-                    <Link href={`/events/${event.id}`} className="btn btn-outline btn-sm">
+                    <Link href={`/events/${event.id}`} className="button button-secondary button-small">
                       Kelola
                     </Link>
                   </td>
@@ -76,8 +82,8 @@ export default function EventsPage() {
       </Card>
 
       <div className="note">
-        Alur tambah event mengikuti §7.1: pilih venue → jadwal → area kursi → metode booking → kategori dan harga →
-        periode penjualan → publikasi. <Badge tone="muted">Formulir simpan belum aktif</Badge>
+        Alur tambah event mengikuti §7.1 dokumen analisis: venue → jadwal → area kursi → metode booking → kategori dan
+        harga → periode penjualan → publikasi. Formulir simpan belum aktif di prototipe.
       </div>
     </>
   );

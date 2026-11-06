@@ -1,6 +1,6 @@
-import { Card } from "@/components/ui/Card";
 import { PageHead } from "@/components/shared/PageHead";
-import { Petal } from "@/components/shared/PetalMark";
+import { PetalFan } from "@/components/shared/PetalMark";
+import { Card } from "@/components/ui/Card";
 import { events, venues } from "@/lib/data/admin";
 
 export const metadata = { title: "Venue" };
@@ -8,25 +8,28 @@ export const metadata = { title: "Venue" };
 export default function VenuesPage() {
   return (
     <>
-      <PageHead title="Venue Management" lead="Master venue dan layout tetap. Layout venue tidak dibuat atau diubah dari sistem (§3.2)." />
+      <PageHead
+        eyebrow="Venue Management"
+        title={<>Master <em>venue</em></>}
+        lead="Layout venue sudah ditetapkan di luar sistem. Admin hanya memilih area atau kelompok kursi saat menyiapkan event (§3.2)."
+      />
       <div className="grid g3">
-        {venues.map((venue) => {
-          const used = events.filter((e) => e.venueId === venue.id).length;
+        {venues.map((v) => {
+          const used = events.filter((e) => e.venueId === v.id).length;
           return (
-            <Card key={venue.id}>
-              <div className="overline">{venue.city.toUpperCase()}</div>
-              <h3 style={{ fontSize: 18, margin: "6px 0 2px", fontFamily: '"Plus Jakarta Sans"' }}>{venue.name}</h3>
-              <div className="mono muted">{venue.capacity.toLocaleString("id-ID")} kursi</div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
-                <span className="sub">{used} event memakai venue</span>
-                <Petal variant="bud" filled={false} stroke="var(--primary)" style={{ width: 44, height: 30, opacity: 0.7 }} />
+            <Card key={v.id}>
+              <div className="event-category">
+                {v.city.toUpperCase()}
+              </div>
+              <h3 className="event-card-title" style={{ marginTop: 10 }}>{v.name}</h3>
+              <p className="sub mono">{v.capacity.toLocaleString("id-ID")} kursi</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+                <span className="sub">{used} event</span>
+                <PetalFan width={2.5} stroke="var(--purple)" className="venue-petal" />
               </div>
             </Card>
           );
         })}
-      </div>
-      <div className="note">
-        Admin hanya memilih area atau kelompok kursi dari layout yang tersedia saat menyiapkan event.
       </div>
     </>
   );

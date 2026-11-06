@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHead } from "@/components/shared/PageHead";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { KeyValue } from "@/components/ui/KeyValue";
-import { PageHead } from "@/components/shared/PageHead";
 import { RefundActions } from "@/components/refund/RefundActions";
 import { events, orders, refunds, tickets } from "@/lib/data/admin";
 import { REFUND_STATUS_LABEL, rupiah } from "@/lib/utils";
@@ -26,14 +26,10 @@ export default async function RefundDetailPage({ params }: PageProps) {
 
   return (
     <>
-      <p style={{ marginBottom: 10 }}>
-        <Link href="/refunds" className="back-link">
-          ← Refund Management
-        </Link>
-      </p>
+      <Link href="/refunds" className="back-link">← Refund Management</Link>
 
       <PageHead
-        overline={refund.source === "EVENT_CANCELLED" ? "Refund pembatalan event" : "Pengajuan peserta"}
+        eyebrow={refund.source === "EVENT_CANCELLED" ? "Refund pembatalan event" : "Pengajuan peserta"}
         title={refund.id}
         lead={`${refund.orderId} / ${refund.ticketId} · diajukan ${refund.requestedAt}`}
         actions={<StatusBadge status={refund.status} label={REFUND_STATUS_LABEL[refund.status]} />}
@@ -41,9 +37,7 @@ export default async function RefundDetailPage({ params }: PageProps) {
 
       <div className="grid g2">
         <Card>
-          <h2 className="section-title" style={{ marginBottom: 8 }}>
-            Data refund
-          </h2>
+          <h2 className="section-title" style={{ marginBottom: 12 }}>Data refund</h2>
           <dl style={{ margin: 0 }}>
             <KeyValue label="Peserta" value={ticket?.name ?? "—"} />
             <KeyValue label="Event" value={event?.name ?? "—"} />

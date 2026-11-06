@@ -10,18 +10,17 @@ export default function CheckinPage() {
   return (
     <>
       <PageHead
-        title="Check-in Management"
-        lead="Scan QR e-ticket. Satu QR per order, jumlah scan dibatasi jumlah tiket valid dalam order (§8.6)."
+        eyebrow="Check-in Management"
+        title={<>Pindai <em>e-ticket</em></>}
+        lead="Satu QR per order. Jumlah scan dibatasi jumlah tiket valid dalam order, bukan status pernah check-in (§8.6)."
       />
 
-      <QrScanner
-        orders={orders.map((o) => ({ id: o.id, buyer: o.buyer, paymentStatus: o.paymentStatus }))}
-      />
+      <QrScanner orders={orders.map((o) => ({ id: o.id, buyer: o.buyer, paymentStatus: o.paymentStatus }))} />
 
-      <h2 className="section-title" style={{ marginTop: 28 }}>
-        Riwayat scan terbaru
-      </h2>
-      <Card flush style={{ marginTop: 12 }}>
+      <div className="section-head">
+        <h2 className="section-title">Riwayat scan</h2>
+      </div>
+      <Card flush>
         <table className="table">
           <thead>
             <tr>
@@ -33,16 +32,16 @@ export default function CheckinPage() {
             </tr>
           </thead>
           <tbody>
-            {scanLogs.map((scan) => (
-              <tr key={`${scan.at}-${scan.orderId}-${scan.result}`}>
-                <td className="mono">{scan.at}</td>
-                <td className="mono">{scan.orderId}</td>
-                <td className="mono">{scan.ticketId ?? "—"}</td>
-                <td>{scan.officer}</td>
+            {scanLogs.map((s) => (
+              <tr key={`${s.at}-${s.orderId}-${s.result}`}>
+                <td className="mono">{s.at}</td>
+                <td className="mono">{s.orderId}</td>
+                <td className="mono">{s.ticketId ?? "—"}</td>
+                <td>{s.officer}</td>
                 <td>
                   <StatusBadge
-                    status={scan.result === "VALID" ? "SUCCESS" : scan.result === "LIMIT" ? "PENDING" : "FAILED"}
-                    label={scan.result === "VALID" ? "Valid" : scan.result === "LIMIT" ? "Batas scan" : "Tidak valid"}
+                    status={s.result === "VALID" ? "SUCCESS" : s.result === "LIMIT" ? "PENDING" : "FAILED"}
+                    label={s.result === "VALID" ? "Valid" : s.result === "LIMIT" ? "Batas scan" : "Tidak valid"}
                   />
                 </td>
               </tr>

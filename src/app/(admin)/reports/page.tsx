@@ -1,14 +1,14 @@
-import { Card } from "@/components/ui/Card";
 import { PageHead } from "@/components/shared/PageHead";
+import { Card } from "@/components/ui/Card";
 import { events } from "@/lib/data/admin";
 import { rupiah } from "@/lib/utils";
 
 export const metadata = { title: "Laporan" };
 
 export default function ReportsPage() {
-  const rows = events.flatMap((event) =>
-    event.categories.map((c) => ({
-      event: event.name,
+  const rows = events.flatMap((e) =>
+    e.categories.map((c) => ({
+      event: e.name,
       category: c.name,
       price: c.price,
       sold: c.sold,
@@ -20,7 +20,11 @@ export default function ReportsPage() {
 
   return (
     <>
-      <PageHead title="Dashboard & Reporting" lead="Laporan penjualan per event dan kategori tiket." />
+      <PageHead
+        eyebrow="Dashboard & Reporting"
+        title={<>Laporan <em>penjualan</em></>}
+        lead="Rekap per event dan kategori tiket. Angka mengikuti data tiket yang terjual, bukan kuota."
+      />
       <Card flush>
         <table className="table">
           <thead>
@@ -34,14 +38,14 @@ export default function ReportsPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={`${row.event}-${row.category}`}>
-                <td>{row.event}</td>
-                <td>{row.category}</td>
-                <td className="num mono">{rupiah(row.price)}</td>
-                <td className="num mono">{row.sold}</td>
-                <td className="num mono">{row.quota}</td>
-                <td className="num mono">{rupiah(row.revenue)}</td>
+            {rows.map((r) => (
+              <tr key={`${r.event}-${r.category}`}>
+                <td>{r.event}</td>
+                <td>{r.category}</td>
+                <td className="num mono">{rupiah(r.price)}</td>
+                <td className="num mono">{r.sold}</td>
+                <td className="num mono">{r.quota}</td>
+                <td className="num mono">{rupiah(r.revenue)}</td>
               </tr>
             ))}
             <tr>
@@ -53,7 +57,9 @@ export default function ReportsPage() {
           </tbody>
         </table>
       </Card>
-      <div className="note">Angka dari data contoh. Laporan kehadiran menunggu data check-in tersambung ke database.</div>
+      <div className="note">
+        Angka dihitung dari data contoh. Laporan kehadiran menunggu data check-in tersambung ke database.
+      </div>
     </>
   );
 }

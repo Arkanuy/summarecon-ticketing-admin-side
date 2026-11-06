@@ -40,7 +40,7 @@ test("RefundActions: setujui → proses → selesai", () => {
   render(
     <RefundActions refundId="RF-003" status="UNDER_REVIEW" ticketId="T-002" participantName="Dian P." />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Setujui" }));
+  fireEvent.click(screen.getByRole("button", { name: /Setujui pengajuan/ }));
   expect(screen.getByText(/disetujui/i)).toBeDefined();
 
   fireEvent.click(screen.getByRole("button", { name: "Mulai proses" }));

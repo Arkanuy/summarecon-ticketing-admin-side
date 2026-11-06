@@ -1,27 +1,30 @@
 import Link from "next/link";
+import { PageHead } from "@/components/shared/PageHead";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
-import { PageHead } from "@/components/shared/PageHead";
 import { events, orders, tickets } from "@/lib/data/admin";
 import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, rupiah } from "@/lib/utils";
 
 export const metadata = { title: "Booking" };
 
-export default function BookingsPage() {
-  const counts = ["PENDING", "PAID", "EXPIRED", "PARTIALLY_REFUNDED", "REFUNDED"] as const;
+const FILTERS = ["PENDING", "PAID", "EXPIRED", "PARTIALLY_REFUNDED", "REFUNDED"] as const;
 
+export default function BookingsPage() {
   return (
     <>
       <PageHead
-        title="Booking Management"
-        lead="Memantau pemesanan dan status order. Status order dan status payment dipisahkan (§8.1–8.2)."
+        eyebrow="Booking Management"
+        title={<>Pesanan <em>masuk</em></>}
+        lead="Status order dan status payment dipisahkan karena mewakili proses yang berbeda (§8.1–8.2)."
       />
 
-      <div className="chips" style={{ marginBottom: 14 }}>
-        <span className="chip on">Semua {orders.length}</span>
-        {counts.map((status) => (
-          <span className="chip" key={status}>
-            {ORDER_STATUS_LABEL[status]} {orders.filter((o) => o.orderStatus === status).length}
+      <div className="chips" style={{ marginBottom: 18 }}>
+        <span className="chip" aria-pressed="true">
+          Semua {orders.length}
+        </span>
+        {FILTERS.map((f) => (
+          <span className="chip" key={f}>
+            {ORDER_STATUS_LABEL[f]} {orders.filter((o) => o.orderStatus === f).length}
           </span>
         ))}
       </div>
