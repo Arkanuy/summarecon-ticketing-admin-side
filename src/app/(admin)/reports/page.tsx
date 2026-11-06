@@ -1,10 +1,15 @@
 import { Card } from "@/components/ui/Card";
 import { events } from "@/lib/data/admin";
 import { rupiah } from "@/lib/utils";
+import { requireAdminPage } from "@/lib/auth/page";
+
+/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
+export const instant = false;
 
 export const metadata = { title: "Laporan" };
 
-export default function ReportsPage() {
+export default async function ReportsPage() {
+  await requireAdminPage();
   const rows = events.flatMap((e) =>
     e.categories.map((c) => ({ event: e.name, category: c.name, price: c.price, sold: c.sold, quota: c.quota, revenue: c.sold * c.price })),
   );

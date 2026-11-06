@@ -3,12 +3,17 @@ import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { events, orders, tickets } from "@/lib/data/admin";
 import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, rupiah } from "@/lib/utils";
+import { requireAdminPage } from "@/lib/auth/page";
+
+/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
+export const instant = false;
 
 export const metadata = { title: "Booking" };
 
 const FILTERS = ["PENDING", "PAID", "EXPIRED", "PARTIALLY_REFUNDED", "REFUNDED"] as const;
 
-export default function BookingsPage() {
+export default async function BookingsPage() {
+  await requireAdminPage();
   return (
     <>
       <div className="page-head">
@@ -35,7 +40,7 @@ export default function BookingsPage() {
           <thead>
             <tr>
               <th>Order</th><th>Pemesan</th><th>Event</th><th className="num">Tiket</th>
-              <th className="num">Total</th><th>Order</th><th>Payment</th><th>Dibuat</th>
+              <th className="num">Total</th><th>Order</th><th>Payment</th><th>Dibuat</th><th />
             </tr>
           </thead>
           <tbody>
@@ -44,9 +49,11 @@ export default function BookingsPage() {
               const count = tickets.filter((t) => t.orderId === o.id).length;
               return (
                 <tr key={o.id}>
-                  <td className="mono"><Link href={`/orders/${o.id}`}>{o.id}</Link></td>
+                  <td className="mono">
+                    <Link href={`/orders/${o.id}`} className="row-link">{o.id}</Link>
+                  </td>
                   <td>
-                    <div className="t-name">{o.buyer}</div>
+                    <Link href={`/orders/${o.id}`} className="t-name row-link">{o.buyer}</Link>
                     <div className="sub">{o.email}</div>
                   </td>
                   <td>{ev?.name ?? "—"}</td>
@@ -55,6 +62,11 @@ export default function BookingsPage() {
                   <td><StatusBadge status={o.orderStatus} label={ORDER_STATUS_LABEL[o.orderStatus]} /></td>
                   <td><StatusBadge status={o.paymentStatus} label={PAYMENT_STATUS_LABEL[o.paymentStatus]} /></td>
                   <td className="mono">{o.createdAt}</td>
+                  <td className="num">
+                    <Link href={`/orders/${o.id}`} className="button button-secondary button-small">
+                      Detail
+                    </Link>
+                  </td>
                 </tr>
               );
             })}

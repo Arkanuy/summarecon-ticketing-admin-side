@@ -1,39 +1,26 @@
 import type { ReactNode } from "react";
-import { Suspense } from "react";
-import { getCurrentAdmin } from "@/lib/auth/guard";
 import { AdminSidebar } from "@/components/shared/AdminSidebar";
 import { AdminTopbar } from "@/components/shared/AdminTopbar";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 
+/**
+ * Layout admin sengaja TIDAK membaca sesi.
+ * Dengan cacheComponents, pembacaan cookie di layout menahan seluruh segmen (termasuk children)
+ * dan boundary-nya bisa berhenti di fallback. Guard dipasang per halaman lewat requireAdminPage().
+ */
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <ToastProvider>
-    <ConfirmProvider>
-    <div className="shell">
-      <Suspense fallback={<aside className="sidebar" aria-hidden="true" />}>
-        <AdminChrome />
-      </Suspense>
-      <div className="workspace">
-        <Suspense fallback={<header className="topbar" aria-hidden="true" />}>
-          <AdminHeader />
-        </Suspense>
-        <main className="page">
-          <Suspense fallback={<p className="muted" style={{ padding: 16 }}>Memuat…</p>}>{children}</Suspense>
-        </main>
-      </div>
-    </div>
-    </ConfirmProvider>
+      <ConfirmProvider>
+        <div className="shell">
+          <AdminSidebar />
+          <div className="workspace">
+            <AdminTopbar />
+            <main className="page">{children}</main>
+          </div>
+        </div>
+      </ConfirmProvider>
     </ToastProvider>
   );
-}
-
-async function AdminChrome() {
-  const admin = await getCurrentAdmin();
-  return <AdminSidebar roleId={admin.roleId} roleName={admin.roleName} />;
-}
-
-async function AdminHeader() {
-  const admin = await getCurrentAdmin();
-  return <AdminTopbar userName={admin.name} roleId={admin.roleId} />;
 }

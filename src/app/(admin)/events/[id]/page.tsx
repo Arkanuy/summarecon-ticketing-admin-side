@@ -5,6 +5,10 @@ import { Badge, StatusBadge, VersionBadge } from "@/components/ui/Badge";
 import { SeatBlocking } from "@/components/seat-map/SeatBlocking";
 import { events, orders, tickets } from "@/lib/data/admin";
 import { ATTENDANCE_LABEL, BOOKING_MODE_LABEL, EVENT_STATUS_LABEL, TICKET_STATUS_LABEL, rupiah } from "@/lib/utils";
+import { requireAdminPage } from "@/lib/auth/page";
+
+/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
+export const instant = false;
 
 type PageProps = { params: Promise<{ id: string }> };
 

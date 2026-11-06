@@ -8,6 +8,10 @@ import {
   ATTENDANCE_LABEL, ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL,
   REFUND_STATUS_LABEL, TICKET_STATUS_LABEL, rupiah,
 } from "@/lib/utils";
+import { requireAdminPage } from "@/lib/auth/page";
+
+/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
+export const instant = false;
 
 type PageProps = { params: Promise<{ id: string }> };
 

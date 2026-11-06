@@ -26,7 +26,6 @@ export async function requireCustomer(request?: Request): Promise<Guarded> {
  * hasil per-request tidak dibagi ke pengguna lain, dan redirect tidak ikut ter-cache.
  */
 export async function getCurrentAdmin(): Promise<SessionUser> {
-  "use cache: private";
   const user = await getSession();
   if (!isAdminUser(user)) redirect("/login");
   return user;
@@ -34,7 +33,6 @@ export async function getCurrentAdmin(): Promise<SessionUser> {
 
 /** Versi lembut: null kalau bukan admin (dipakai halaman login). */
 export async function currentAdmin(): Promise<SessionUser | null> {
-  "use cache: private";
   const user = await getSession();
   return isAdminUser(user) ? user : null;
 }

@@ -178,6 +178,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .table tbody tr:hover { background: var(--hover-soft); }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .t-name { font-family: "Plus Jakarta Sans", sans-serif; font-size: 12.5px; font-weight: 700; letter-spacing: -.01em; }
+.row-link { display: inline-block; }
+.row-link:hover { color: var(--purple); text-decoration: underline; text-underline-offset: 3px; }
 .sub { margin-top: 1px; color: var(--muted); font-size: 11px; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
@@ -392,22 +394,51 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .g2, .g2-even { grid-template-columns: minmax(0, 1fr); }
 }
+/* Tablet & ponsel: sidebar jadi bar atas yang bisa digeser horizontal, bukan tab bawah
+   (tab bawah menutupi tabel). Tinggi dikunci supaya item tidak gepeng. */
 @media (max-width: 900px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
-  .sidebar { position: static; height: auto; flex-direction: row; overflow-x: auto; align-items: center; gap: 4px; padding: 8px; border-right: 0; border-bottom: 1px solid var(--line); }
-  .sidebar-brand { padding: 0 10px 0 0; flex: 0 0 auto; }
-  .sidebar-brand small { display: none; }
+  .sidebar {
+    position: sticky; top: 0; z-index: 30; height: auto; min-height: 56px;
+    display: block; padding: 0; border-right: 0; border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .sidebar-brand { display: none; }
+  .sidebar nav { display: flex; align-items: stretch; overflow-x: auto; scrollbar-width: none; }
+  .sidebar nav::-webkit-scrollbar { display: none; }
+  .sidebar nav > div { display: flex; align-items: stretch; }
   .nav-group, .sidebar-foot { display: none; }
-  .nav-list { flex-direction: row; gap: 2px; }
-  .nav-item { min-height: 34px; padding: 6px 10px; font-size: 12px; white-space: nowrap; }
-  .nav-icon { display: none; }
-  .topbar { padding: 0 12px; min-height: 48px; }
+  .nav-list { flex-direction: row; gap: 0; }
+  .nav-item {
+    flex-direction: row; gap: 7px; min-height: 56px; padding: 0 14px;
+    border-radius: 0; font-size: 12.5px; white-space: nowrap;
+    border-bottom: 2px solid transparent;
+  }
+  .nav-item[aria-current="page"] { border-radius: 0; border-bottom-color: var(--purple); background: transparent; }
+  .nav-icon { display: block; width: 15px; height: 15px; flex: 0 0 15px; }
+  .topbar { position: sticky; top: 56px; padding: 0 12px; min-height: 46px; }
+  .crumbs { display: none; }
   .page { padding: 14px 12px 32px; }
   .page-title { font-size: 18px; }
-  .event-row { grid-template-columns: 40px minmax(0, 1fr) auto; }
-  .event-row .event-row-side { grid-column: 1 / -1; justify-content: space-between; }
+  .page-head { align-items: flex-start; }
+  .event-row { grid-template-columns: 40px minmax(0, 1fr); row-gap: 8px; }
+  .event-row > :nth-child(3) { grid-column: 1 / -1; }
+  .event-row-side { grid-column: 1 / -1; justify-content: space-between; }
   .seat { width: 26px; height: 26px; flex-basis: 26px; font-size: 8.5px; }
   .stage { width: 70%; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g2, .g2-even, .g3 { grid-template-columns: minmax(0, 1fr); }
+  .modal-card { max-width: 100%; }
+  .toast-stack { right: 12px; left: 12px; bottom: 12px; }
+  .toast { max-width: 100%; }
+}
+
+/* Ponsel kecil: label menu disembunyikan, ikon saja, item tetap 56px. */
+@media (max-width: 560px) {
+  .nav-item span:not(.nav-count) { display: none; }
+  .nav-item { padding: 0 16px; justify-content: center; }
+  .nav-count { margin-left: 4px; }
+  .page-head { flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 @media print { .sidebar, .topbar { display: none; } .page { padding: 0; } }

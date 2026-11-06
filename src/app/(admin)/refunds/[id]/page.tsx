@@ -6,6 +6,10 @@ import { KeyValue } from "@/components/ui/KeyValue";
 import { RefundActions } from "@/components/refund/RefundActions";
 import { events, orders, refunds, tickets } from "@/lib/data/admin";
 import { REFUND_STATUS_LABEL, rupiah } from "@/lib/utils";
+import { requireAdminPage } from "@/lib/auth/page";
+
+/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
+export const instant = false;
 
 type PageProps = { params: Promise<{ id: string }> };
 

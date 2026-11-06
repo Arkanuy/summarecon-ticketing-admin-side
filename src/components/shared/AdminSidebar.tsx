@@ -1,19 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { NavLinks, type NavLink } from "@/components/shared/NavLinks";
 
-type Item = { href: string; label: string; icon: string; count?: number };
-
-/* Navigasi utama admin: daftar modul lengkap, selalu terlihat. */
-const GROUPS: { title: string; items: Item[] }[] = [
+const GROUPS: { title: string; items: NavLink[] }[] = [
   {
     title: "Operasional",
     items: [
       { href: "/", label: "Dashboard", icon: "M3 10h6v10H3zM11 3h6v17h-6z" },
       { href: "/events", label: "Event", icon: "M4 5h16v14H4zM4 9h16" },
       { href: "/bookings", label: "Booking", icon: "M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" },
-      { href: "/refunds", label: "Refund", icon: "M4 12a8 8 0 1 0 3-6.2M4 4v4h4", count: 5 },
+      { href: "/refunds", label: "Refund", icon: "M4 12a8 8 0 1 0 3-6.2M4 4v4h4" },
     ],
   },
   {
@@ -32,20 +29,22 @@ const GROUPS: { title: string; items: Item[] }[] = [
   },
 ];
 
-const isActive = (path: string, href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+export function AdminSidebar() {
+  const [roleId, setRoleId] = useState<string | null>(null);
 
-export function AdminSidebar({ roleId = "ROLE-ADMIN", roleName = "ADMIN" }: { roleId?: string; roleName?: string }) {
-  const [path, setPath] = useState("/");
-  /* Petugas check-in hanya melihat modul lapangan. Role dicek dari ID, bukan tebakan nama. */
-  const isOfficer = roleId === "ROLE-CHECKIN";
-
-  /* Path dibaca di efek supaya layout server tidak menunggu URL (cacheComponents). */
   useEffect(() => {
-    const sync = () => setPath(window.location.pathname);
-    sync();
-    window.addEventListener("popstate", sync);
-    return () => window.removeEventListener("popstate", sync);
+    let alive = true;
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => alive && setRoleId(d?.data?.role === "CHECK_IN_STAFF" ? "ROLE-CHECKIN" : "ROLE-ADMIN"))
+      .catch(() => alive && setRoleId("ROLE-ADMIN"));
+    return () => {
+      alive = false;
+    };
   }, []);
+
+  /* Petugas check-in hanya melihat modul lapangan. */
+  const groups = roleId === "ROLE-CHECKIN" ? GROUPS.filter((g) => g.title === "Lapangan") : GROUPS;
 
   return (
     <aside className="sidebar">
@@ -64,25 +63,10 @@ export function AdminSidebar({ roleId = "ROLE-ADMIN", roleName = "ADMIN" }: { ro
       </div>
 
       <nav aria-label="Navigasi admin">
-        {(isOfficer ? GROUPS.filter((g) => g.title === "Lapangan") : GROUPS).map((g) => (
-          <div key={g.title}>
-            <div className="nav-group">{g.title}</div>
-            <div className="nav-list">
-              {g.items.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="nav-item"
-                  aria-current={isActive(path, item.href) ? "page" : undefined}
-                >
-                  <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d={item.icon} />
-                  </svg>
-                  <span>{item.label}</span>
-                  {item.count ? <span className="nav-count">{item.count}</span> : null}
-                </Link>
-              ))}
-            </div>
+        {groups.map((group) => (
+          <div key={group.title}>
+            <div className="nav-group">{group.title}</div>
+            <NavLinks items={group.items} />
           </div>
         ))}
       </nav>
@@ -90,7 +74,7 @@ export function AdminSidebar({ roleId = "ROLE-ADMIN", roleName = "ADMIN" }: { ro
       <div className="sidebar-foot">
         Summarecon Mall · Bandung
         <br />
-        {isOfficer ? "Petugas check-in" : "Admin"}
+        {roleId === "ROLE-CHECKIN" ? "Petugas check-in" : "Admin"}
       </div>
     </aside>
   );

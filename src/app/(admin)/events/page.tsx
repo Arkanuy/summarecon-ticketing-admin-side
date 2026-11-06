@@ -5,10 +5,15 @@ import { VersionBadge } from "@/components/ui/Badge";
 import { PublishToggle } from "@/components/event/PublishToggle";
 import { events } from "@/lib/data/admin";
 import { BOOKING_MODE_LABEL, EVENT_STATUS_LABEL, ticketSummary } from "@/lib/utils";
+import { requireAdminPage } from "@/lib/auth/page";
+
+/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
+export const instant = false;
 
 export const metadata = { title: "Event" };
 
-export default function EventsPage() {
+export default async function EventsPage() {
+  await requireAdminPage();
   return (
     <>
       <div className="page-head">

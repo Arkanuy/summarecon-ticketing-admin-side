@@ -1,10 +1,15 @@
 import { PetalFan } from "@/components/shared/PetalMark";
 import { Card } from "@/components/ui/Card";
 import { events, venues } from "@/lib/data/admin";
+import { requireAdminPage } from "@/lib/auth/page";
+
+/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
+export const instant = false;
 
 export const metadata = { title: "Venue" };
 
-export default function VenuesPage() {
+export default async function VenuesPage() {
+  await requireAdminPage();
   return (
     <>
       <div className="page-head">

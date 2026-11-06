@@ -1,11 +1,17 @@
+import Link from "next/link";
 import { QrScanner } from "@/components/checkin/QrScanner";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
-import { orders, scanLogs } from "@/lib/data/admin";
+import { events, orders, scanLogs } from "@/lib/data/admin";
+import { requireAdminPage } from "@/lib/auth/page";
+
+/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
+export const instant = false;
 
 export const metadata = { title: "Check-in" };
 
-export default function CheckinPage() {
+export default async function CheckinPage() {
+  await requireAdminPage();
   return (
     <>
       <div className="page-head">
@@ -21,7 +27,9 @@ export default function CheckinPage() {
 
       <div className="section-head">
         <h2 className="section-title">Riwayat scan</h2>
-        <span className="sub">{scanLogs.length} scan</span>
+        <span className="sub">
+          {scanLogs.length} scan · {events.length} event
+        </span>
       </div>
       <Card flush>
         <table className="table">
@@ -32,7 +40,9 @@ export default function CheckinPage() {
             {scanLogs.map((s) => (
               <tr key={`${s.at}-${s.orderId}-${s.result}`}>
                 <td className="mono">{s.at}</td>
-                <td className="mono">{s.orderId}</td>
+                <td className="mono">
+                  <Link href={`/orders/${s.orderId}`} className="row-link">{s.orderId}</Link>
+                </td>
                 <td className="mono">{s.ticketId ?? "—"}</td>
                 <td>{s.officer}</td>
                 <td>

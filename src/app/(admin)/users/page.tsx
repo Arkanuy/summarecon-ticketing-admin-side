@@ -1,10 +1,15 @@
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { staff } from "@/lib/data/admin";
+import { requireAdminPage } from "@/lib/auth/page";
+
+/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
+export const instant = false;
 
 export const metadata = { title: "Pengguna" };
 
-export default function UsersPage() {
+export default async function UsersPage() {
+  await requireAdminPage();
   return (
     <>
       <div className="page-head">

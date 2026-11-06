@@ -4,12 +4,17 @@ import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { events, orders, refunds, tickets } from "@/lib/data/admin";
 import { ORDER_STATUS_LABEL, REFUND_STATUS_LABEL, rupiah, ticketSummary } from "@/lib/utils";
+import { requireAdminPage } from "@/lib/auth/page";
+
+/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
+export const instant = false;
 
 export const metadata = { title: "Dashboard" };
 
 const OPEN_REFUND = ["REQUESTED", "UNDER_REVIEW", "APPROVED", "PROCESSING", "NEED_CONFIRMATION"];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  await requireAdminPage();
   const sold = events.reduce((s, e) => s + ticketSummary(e.categories).sold, 0);
   const quota = events.reduce((s, e) => s + ticketSummary(e.categories).quota, 0);
   const revenue = orders

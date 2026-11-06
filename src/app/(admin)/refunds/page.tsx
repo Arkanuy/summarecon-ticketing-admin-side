@@ -3,13 +3,18 @@ import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { orders, refunds, tickets } from "@/lib/data/admin";
 import { REFUND_STATUS_LABEL, rupiah } from "@/lib/utils";
+import { requireAdminPage } from "@/lib/auth/page";
+
+/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
+export const instant = false;
 
 export const metadata = { title: "Refund" };
 
 const GROUPS = ["REQUESTED", "UNDER_REVIEW", "APPROVED", "PROCESSING", "NEED_CONFIRMATION"] as const;
 const METHOD = { BANK: "Transfer bank", EWALLET: "E-wallet" } as const;
 
-export default function RefundsPage() {
+export default async function RefundsPage() {
+  await requireAdminPage();
   return (
     <>
       <div className="page-head">
@@ -54,9 +59,11 @@ export default function RefundsPage() {
               const order = orders.find((o) => o.id === r.orderId);
               return (
                 <tr key={r.id}>
-                  <td className="mono">{r.id}</td>
+                  <td className="mono">
+                    <Link href={`/refunds/${r.id}`} className="row-link">{r.id}</Link>
+                  </td>
                   <td>
-                    <div className="t-name">{ticket?.name ?? "—"}</div>
+                    <Link href={`/refunds/${r.id}`} className="t-name row-link">{ticket?.name ?? "—"}</Link>
                     <div className="sub">{order?.buyer}</div>
                   </td>
                   <td className="mono">
