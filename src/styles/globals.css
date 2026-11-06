@@ -78,6 +78,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .sidebar-foot { margin-top: auto; padding: 14px 10px 4px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
 
 .main { min-width: 0; padding: 20px 32px 56px; }
+/* .wrap di style guide: max-width 960px, margin auto. Dipertahankan supaya kepadatan visual sama. */
+/* Konten rata tengah di area main (bukan di viewport), supaya sisi kanan tidak kosong. */
+.main { padding-inline: clamp(16px, 4vw, 48px); }
+.main > * { max-width: 1040px; margin-left: auto; margin-right: auto; width: 100%; }
+
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
 .who { font-size: 14px; color: var(--muted); }
 .who strong { color: var(--ink); font-family: "Plus Jakarta Sans"; }
@@ -123,12 +128,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .vd-4 { background: color-mix(in srgb, var(--bad) 14%, var(--surface)); color: var(--bad); }
 
 /* ---------- dashboard (mengikuti blok .adm di style guide) ---------- */
-.greeter { background: var(--tint); border-radius: var(--r); padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; gap: 16px; overflow: hidden; margin-bottom: 14px; }
+.greeter { background: var(--tint); border-radius: var(--r); padding: 22px 26px; display: flex; justify-content: space-between; align-items: center; gap: 16px; overflow: hidden; margin-bottom: 14px; min-height: 112px; }
 .greeter h1 { font-size: 22px; font-weight: 800; letter-spacing: -.03em; }
 .greeter p { margin: 2px 0 0; font-size: 14px; color: var(--muted); }
 .greeter-art { height: 84px; opacity: .7; color: var(--primary); flex: 0 0 auto; }
 
-.stats { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-bottom: 14px; }
+.stats { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); margin-bottom: 14px; }
+.stat { min-height: 96px; display: flex; flex-direction: column; justify-content: space-between; }
 .stat { background: var(--tint); border-radius: 14px; padding: 14px; position: relative; }
 .stat:first-child { background: var(--grad); color: #fff; }
 .stat b { display: block; font: 800 24px "Plus Jakarta Sans", sans-serif; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
@@ -225,11 +231,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* ---------- responsive ---------- */
 @media (max-width: 900px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
-  .sidebar { position: fixed; inset: auto 0 0 0; height: auto; width: 100%; flex-direction: row; overflow-x: auto; border-right: 0; border-top: 1px solid var(--line); padding: 8px; z-index: 30; gap: 0; }
+  /* Tab bawah: nav harus mewarisi tinggi item, bukan menyusut ke 17px. */
+  .sidebar { position: fixed; inset: auto 0 0 0; height: auto; min-height: 64px; width: 100%; display: block; overflow-x: auto; overflow-y: hidden; border-right: 0; border-top: 1px solid var(--line); padding: 6px 8px; z-index: 30; background: var(--surface); }
+  .sidebar nav { display: block; }
   .brand, .nav-group, .sidebar-foot { display: none; }
   .sidebar nav { display: flex; }
   .nav-list { flex-direction: row; gap: 0; }
-  .nav-item { flex-direction: column; gap: 2px; min-width: 74px; font-size: 11px; min-height: 48px; padding: 6px 8px; text-align: center; }
+  .nav-item { flex-direction: column; gap: 2px; min-width: 74px; font-size: 11px; min-height: 52px; padding: 6px 8px; text-align: center; justify-content: center; }
+  .nav-count { font-size: 10px; min-width: 16px; height: 16px; }
   .main { padding: 16px 16px 100px; }
   .g2, .g3 { grid-template-columns: minmax(0, 1fr); }
   .page-title { font-size: 24px; }
