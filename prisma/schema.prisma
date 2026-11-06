@@ -1,0 +1,708 @@
+// Skema SQLite (mode prototype). Didesain agar naik ke Postgres cukup ganti provider.
+// Aturan penamaan: nama tabel & kolom sama dengan kunci di data dummy JSON.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- akses ----------
+
+model Role {
+  roleId      String @id @map("role_id")
+  roleName    String @map("role_name")
+  description String?
+
+  rolePermissions RolePermission[]
+  users           User[]
+
+  @@map("roles")
+}
+
+model Permission {
+  permissionId String @id @map("permission_id")
+  code         String @unique
+  description  String?
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+/// Pivot role → permission. Satu baris per pasangan agar bisa di-join.
+model RolePermission {
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [roleId], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [permissionId], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id           String  @id @map("user_id")
+  roleId       String  @map("role_id")
+  fullName     String  @map("full_name")
+  email        String  @unique
+  phoneNumber  String? @map("phone_number")
+  passwordHash String  @map("password_hash")
+  accountStatus String @default("ACTIVE") @map("account_status")
+  createdAt    DateTime @map("created_at")
+
+  role Role @relation(fields: [roleId], references: [roleId])
+
+  orders           Order[]
+  refundsRequested Refund[]            @relation("refundRequester")
+  checkins         CheckinRecord[]
+  queueEntries     QueueEntry[]
+  bookingHolds     BookingHold[]
+  auditLogs        AdminAuditLog[]
+  notificationLogs NotificationLog[]    @relation("notificationRecipient")
+  seatBlocks       SeatBlock[]
+  participantChanges ParticipantChangeLog[]
+  cancellationRecords EventCancellationRecord[]
+
+  @@index([roleId])
+  @@map("users")
+}
+
+// ---------- venue & layout ----------
+
+model Venue {
+  id                    String  @id @map("venue_id")
+  venueCode             String  @map("venue_code")
+  venueName             String  @map("venue_name")
+  venueAlias            String? @map("venue_alias")
+  venueType             String? @map("venue_type")
+  floor                 String?
+  locationLabel         String? @map("location_label")
+  masterLayoutVersion   String? @map("master_layout_version")
+  status                String  @default("ACTIVE")
+  capacityValidationStatus String? @map("capacity_validation_status")
+  capacityOfficial      Int?    @map("capacity_official")
+  notes                 String?
+  masterLayoutElements  String? @map("master_layout_elements") // JSON array
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  layoutTemplates LayoutTemplate[]
+  events          Event[]
+
+  @@map("venues")
+}
+
+model LayoutTemplate {
+  id                     String  @id @map("layout_template_id")
+  venueId                String  @map("venue_id")
+  templateCode           String  @map("template_code")
+  templateName           String  @map("template_name")
+  version                String  @default("1.0")
+  sourceBlueprintPage    Int?    @map("source_blueprint_page")
+  selection              String?
+  templateStatus         String  @map("template_status")
+  activeBookingTypes     String? @map("active_booking_types") // JSON array
+  optionalBookingTypeNote String? @map("optional_booking_type_note")
+  layoutElements         String? @map("layout_elements")       // JSON array
+  nonTicketableElements  String? @map("non_ticketable_elements")
+  seatGridDefinition     String? @map("seat_grid_definition")  // JSON
+  sections               String?                                // JSON array
+  alternativeLayoutsNotSelected String? @map("alternative_layouts_not_selected")
+
+  venue  Venue   @relation(fields: [venueId], references: [id])
+  events Event[]
+  snapshots EventLayoutSnapshot[]
+
+  @@index([venueId])
+  @@map("layout_templates")
+}
+
+// ---------- event ----------
+
+model Event {
+  id               String   @id @map("event_id")
+  eventCode        String   @unique @map("event_code")
+  eventName        String   @map("event_name")
+  description      String?
+  venueId          String   @map("venue_id")
+  layoutTemplateId String?  @map("layout_template_id")
+  eventStatus      String   @map("event_status")
+  startAt          DateTime @map("start_at")
+  endAt            DateTime @map("end_at")
+  timezone         String   @default("Asia/Jakarta")
+  salesStartAt     DateTime? @map("sales_start_at")
+  salesEndAt       DateTime? @map("sales_end_at")
+  publishedAt      DateTime? @map("published_at")
+  createdBy        String?  @map("created_by")
+  currency         String   @default("IDR")
+  cancelledAt      DateTime? @map("cancelled_at")
+  cancelledBy      String?  @map("cancelled_by")
+  cancelReason     String?  @map("cancel_reason")
+
+  venue          Venue                @relation(fields: [venueId], references: [id])
+  layoutTemplate LayoutTemplate?      @relation(fields: [layoutTemplateId], references: [id])
+  snapshots      EventLayoutSnapshot[]
+  sections       EventSection[]
+  categories     TicketCategory[]
+  seats          EventSeat[]
+  seatBlocks     SeatBlock[]
+  queueEntries   QueueEntry[]
+  bookingHolds   BookingHold[]
+  orders         Order[]
+  tickets        Ticket[]
+  eTickets       ETicket[]
+  refunds        Refund[]
+  checkins       CheckinRecord[]
+  notifications  NotificationLog[]
+  cancellation   EventCancellationRecord?
+
+  @@index([venueId])
+  @@index([eventStatus])
+  @@index([startAt])
+  @@map("events")
+}
+
+model EventLayoutSnapshot {
+  id               String   @id @map("snapshot_id")
+  eventId          String   @map("event_id")
+  layoutTemplateId String?  @map("layout_template_id")
+  templateVersion  String?  @map("template_version")
+  snapshotStatus   String   @map("snapshot_status")
+  createdAt        DateTime @map("snapshot_created_at")
+  note             String?
+  snapshotPayload  String?  @map("snapshot_payload") // JSON
+
+  event          Event           @relation(fields: [eventId], references: [id])
+  layoutTemplate LayoutTemplate? @relation(fields: [layoutTemplateId], references: [id])
+
+  @@index([eventId])
+  @@map("event_layout_snapshots")
+}
+
+/// Inventory per section. Kuota dijaga di sini untuk BOOK_BY_QUOTA / STANDING.
+model EventSection {
+  id               String  @id @map("event_section_id")
+  eventId          String  @map("event_id")
+  sectionId        String  @map("section_id")
+  sectionName      String  @map("section_name")
+  bookingType      String  @map("booking_type") // BOOK_BY_SEAT | BOOK_BY_QUOTA | STANDING
+  ticketCategoryId String? @map("ticket_category_id")
+  inventoryStatus  String  @default("ACTIVE") @map("inventory_status")
+  capacity         Int
+  blockedQuantity  Int     @default(0) @map("blocked_quantity")
+  reservedQuantity Int     @default(0) @map("reserved_quantity")
+  soldQuantity     Int     @default(0) @map("sold_quantity")
+  availableQuantity Int    @default(0) @map("available_quantity")
+  cancelledQuantity Int    @default(0) @map("cancelled_quantity")
+  capacityIsDummy  Boolean @default(true) @map("capacity_is_dummy")
+
+  event          Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category       TicketCategory?  @relation(fields: [ticketCategoryId], references: [id])
+  seats          EventSeat[]
+  orderItems     OrderItem[]
+  tickets        Ticket[]
+  bookingHolds   BookingHold[]
+
+  @@unique([eventId, sectionId])
+  @@index([eventId])
+  @@map("event_sections")
+}
+
+model TicketCategory {
+  id              String   @id @map("ticket_category_id")
+  eventId         String   @map("event_id")
+  eventSectionId  String?  @map("event_section_id")
+  categoryName    String   @map("category_name")
+  price           Int
+  currency        String   @default("IDR")
+  quota           Int
+  saleStartAt     DateTime? @map("sale_start_at")
+  saleEndAt       DateTime? @map("sale_end_at")
+  status          String   @default("OPEN")
+
+  event    Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sections EventSection[]
+  orderItems OrderItem[]
+
+  @@index([eventId])
+  @@map("ticket_categories")
+}
+
+/// Hanya untuk BOOK_BY_SEAT. Unik per event+seat agar tak ada kursi ganda.
+model EventSeat {
+  id             String  @id @map("event_seat_id")
+  eventId        String  @map("event_id")
+  sectionId      String  @map("section_id")
+  blockCode      String? @map("block_code")
+  rowLabel       String  @map("row_label")
+  seatNumber     String  @map("seat_number")
+  seatLabel      String  @map("seat_label")
+  position       String? // JSON {x,y,unit}
+  status         String  @default("AVAILABLE") // AVAILABLE | LOCKED | SOLD | BLOCKED | DISABLED_EVENT_CANCELLED
+  statusSource   String? @map("status_source")
+  currentOrderId String? @map("current_order_id")
+  blockedReason  String? @map("blocked_reason")
+  version        Int     @default(0) // optimistic lock untuk seat locking
+
+  event      Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  section    EventSection @relation(fields: [sectionId], references: [id])
+  orderItems OrderItem[]
+  tickets    Ticket[]
+  seatBlocks SeatBlock[]
+
+  @@unique([eventId, seatLabel])
+  @@index([eventId, status])
+  @@index([sectionId])
+  @@map("event_seats")
+}
+
+model SeatBlock {
+  id          String   @id @map("seat_block_id")
+  eventId     String   @map("event_id")
+  eventSeatId String   @map("event_seat_id")
+  reason      String?
+  blockedBy   String?  @map("blocked_by")
+  blockedAt   DateTime @map("blocked_at")
+  status      String   @default("ACTIVE")
+
+  event Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seat  EventSeat @relation(fields: [eventSeatId], references: [id])
+  admin User?     @relation(fields: [blockedBy], references: [id])
+
+  @@index([eventId])
+  @@map("seat_blocks")
+}
+
+model QueueEntry {
+  id          String   @id @map("queue_entry_id")
+  eventId     String   @map("event_id")
+  userId      String   @map("user_id")
+  queueNumber Int      @map("queue_number")
+  queueToken  String   @unique @map("queue_token")
+  enteredAt   DateTime @map("entered_at")
+  status      String   @default("WAITING")
+  servedAt    DateTime? @map("served_at")
+  note        String?
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@index([eventId, status])
+  @@index([eventId, queueNumber])
+  @@map("queue_entries")
+}
+
+/// Seat lock 10 menit. Satu kursi hanya boleh punya satu hold aktif (dijaga di service layer + index).
+model BookingHold {
+  id            String   @id @map("hold_id")
+  eventId       String   @map("event_id")
+  userId        String   @map("user_id")
+  orderId       String?  @map("order_id")
+  eventSeatIds  String?  @map("event_seat_ids") // JSON array
+  sectionId     String?  @map("section_id")
+  quantity      Int      @default(1)
+  holdStartedAt DateTime @map("hold_started_at")
+  reservedUntil DateTime @map("reserved_until")
+  status        String   @default("ACTIVE") // ACTIVE | RELEASED_EXPIRED | CONVERTED | CANCELLED
+  releasedAt    DateTime? @map("released_at")
+  releaseReason String?  @map("release_reason")
+
+  event   Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id])
+  section EventSection? @relation(fields: [sectionId], references: [id])
+
+  @@index([eventId, status])
+  @@index([reservedUntil])
+  @@map("booking_holds")
+}
+
+// ---------- order & pembayaran ----------
+
+model Order {
+  id             String   @id @map("order_id")
+  orderCode      String   @unique @map("order_code")
+  eventId        String   @map("event_id")
+  userId         String   @map("user_id")
+  buyerSnapshot  String?  @map("buyer_snapshot") // JSON {full_name,email,phone_number}
+  orderStatus    String   @map("order_status")   // PENDING | PAID | EXPIRED | CANCELLED | PARTIALLY_REFUNDED | REFUNDED
+  quantity       Int      @default(1)
+  subtotal       Int
+  discountAmount Int      @default(0) @map("discount_amount")
+  adminFee       Int      @default(0) @map("admin_fee")
+  totalAmount    Int      @map("total_amount")
+  currency       String   @default("IDR")
+  createdAt      DateTime @map("created_at")
+  paidAt         DateTime? @map("paid_at")
+  cancelledAt    DateTime? @map("cancelled_at")
+  expiresAt      DateTime? @map("expires_at") // batas pending 7 menit (§7.3)
+
+  event       Event         @relation(fields: [eventId], references: [id])
+  user        User          @relation(fields: [userId], references: [id])
+  items       OrderItem[]
+  tickets     Ticket[]
+  payments    Payment[]
+  eTicket     ETicket?
+  refunds     Refund[]
+  refundLink  RefundLine[]
+  checkins    CheckinRecord[]
+  notifications NotificationLog[]
+
+  @@index([eventId])
+  @@index([userId])
+  @@index([orderStatus])
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String  @id @map("order_item_id")
+  orderId          String  @map("order_id")
+  eventSectionId   String? @map("event_section_id")
+  ticketCategoryId String? @map("ticket_category_id")
+  eventSeatId      String? @map("event_seat_id")
+  quantity         Int     @default(1)
+  unitPrice        Int     @map("unit_price")
+  lineTotal        Int     @map("line_total")
+
+  order    Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  section  EventSection?   @relation(fields: [eventSectionId], references: [id])
+  category TicketCategory? @relation(fields: [ticketCategoryId], references: [id])
+  seat     EventSeat?      @relation(fields: [eventSeatId], references: [id])
+  tickets  Ticket[]
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Payment {
+  id                    String   @id @map("payment_id")
+  orderId               String   @map("order_id")
+  provider              String   @default("SANDBOX_QRIS")
+  paymentMethod         String   @map("payment_method") // QRIS
+  providerTransactionId String?  @unique @map("provider_transaction_id")
+  amount                Int
+  currency              String   @default("IDR")
+  paymentStatus         String   @map("payment_status") // INITIATED | PENDING | SUCCESS | FAILED | EXPIRED
+  initiatedAt           DateTime @map("initiated_at")
+  paidAt                DateTime? @map("paid_at")
+  expiresAt             DateTime? @map("expires_at")
+  gatewayRefundStatus   String?  @map("gateway_refund_status")
+
+  order     Order                     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  callbacks PaymentGatewayCallback[]
+
+  @@index([orderId])
+  @@index([paymentStatus])
+  @@map("payments")
+}
+
+/// Idempotency: satu provider_event_id hanya diproses sekali (§6.3 no.4).
+model PaymentGatewayCallback {
+  id              String   @id @map("callback_id")
+  paymentId       String   @map("payment_id")
+  providerEventId String   @unique @map("provider_event_id")
+  eventType       String   @map("event_type")
+  receivedAt      DateTime @map("received_at")
+  signatureValid  Boolean  @default(false) @map("signature_valid")
+  idempotencyKey  String?  @unique @map("idempotency_key")
+  processingResult String? @map("processing_result")
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@map("payment_gateway_callbacks")
+}
+
+// ---------- tiket, QR, check-in ----------
+
+model Ticket {
+  id              String   @id @map("ticket_id")
+  ticketCode      String   @unique @map("ticket_code")
+  orderId         String   @map("order_id")
+  orderItemId     String?  @map("order_item_id")
+  eventId         String   @map("event_id")
+  participantName String   @map("participant_name")
+  attendeeSequence Int     @default(1) @map("attendee_sequence")
+  eventSectionId  String?  @map("event_section_id")
+  eventSeatId     String?  @map("event_seat_id")
+  ticketStatus    String   @map("ticket_status") // RESERVED | ISSUED | USED | REFUND_PENDING | REFUNDED | CANCELLED
+  attendanceStatus String  @default("NOT_CHECKED_IN") @map("attendance_status")
+  issuedAt        DateTime? @map("issued_at")
+  invalidatedAt   DateTime? @map("invalidated_at")
+  nameLastUpdatedAt DateTime? @map("name_last_updated_at")
+
+  order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem OrderItem?    @relation(fields: [orderItemId], references: [id])
+  event     Event         @relation(fields: [eventId], references: [id])
+  section   EventSection? @relation(fields: [eventSectionId], references: [id])
+  seat      EventSeat?    @relation(fields: [eventSeatId], references: [id])
+
+  checkins        CheckinRecord[]
+  refundLines     RefundLine[]
+  changeLogs      ParticipantChangeLog[]
+
+  @@index([orderId])
+  @@index([eventId, ticketStatus])
+  @@index([eventSeatId])
+  @@map("tickets")
+}
+
+/// Satu QR per order. successful_scan_count tidak boleh melebihi valid_ticket_count.
+model ETicket {
+  id                     String   @id @map("e_ticket_id")
+  orderId                String   @unique @map("order_id")
+  eventId                String   @map("event_id")
+  qrTokenHash            String   @unique @map("qr_token_hash")
+  qrPayloadVersion       Int      @default(1) @map("qr_payload_version")
+  issuedAt               DateTime @map("issued_at")
+  invalidatedAt          DateTime? @map("invalidated_at")
+  ticketQuantityAtIssue  Int      @map("ticket_quantity_at_issue")
+  validTicketCount       Int      @map("valid_ticket_count")
+  successfulScanCount    Int      @default(0) @map("successful_scan_count")
+  maxSuccessfulScanCount Int      @map("max_successful_scan_count")
+  ticketStatusSummary    String?  @map("ticket_status_summary")
+  deliveryNotificationId String?  @map("delivery_notification_id")
+
+  order    Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  event    Event           @relation(fields: [eventId], references: [id])
+  checkins CheckinRecord[]
+
+  @@index([eventId])
+  @@map("e_tickets")
+}
+
+model CheckinRecord {
+  id              String   @id @map("checkin_record_id")
+  eTicketId       String   @map("e_ticket_id")
+  orderId         String   @map("order_id")
+  ticketId        String?  @map("ticket_id")
+  eventId         String   @map("event_id")
+  scanSequence    Int      @map("scan_sequence")
+  scanResult      String   @map("scan_result") // SUCCESS | REJECTED_LIMIT | REJECTED_INVALID
+  scannedAt       DateTime @map("scanned_at")
+  checkedBy       String?  @map("checked_by")
+  deviceId        String?  @map("device_id")
+  rejectionReason String?  @map("rejection_reason")
+
+  eTicket ETicket @relation(fields: [eTicketId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id])
+  ticket  Ticket? @relation(fields: [ticketId], references: [id])
+  event   Event   @relation(fields: [eventId], references: [id])
+  officer User?   @relation(fields: [checkedBy], references: [id])
+
+  @@unique([eTicketId, scanSequence])
+  @@index([eventId, scannedAt])
+  @@map("checkin_records")
+}
+
+// ---------- refund ----------
+
+model Refund {
+  id                     String   @id @map("refund_id")
+  refundCode             String   @unique @map("refund_code")
+  refundType             String   @map("refund_type") // PARTICIPANT_REQUEST | EVENT_CANCELLED
+  eventId                String   @map("event_id")
+  orderId                String   @map("order_id")
+  requestedByUserId      String?  @map("requested_by_user_id")
+  quantity               Int      @default(1)
+  refundAmount           Int      @map("refund_amount")
+  currency               String   @default("IDR")
+  status                 String   @map("status")
+  refundDataStatus       String   @default("NOT_SUBMITTED") @map("refund_data_status")
+  missingDestinationFields String? @map("missing_destination_fields")
+  approvalRequired       Boolean  @default(true) @map("approval_required")
+  approvalMode           String?  @map("approval_mode")
+  requestedAt            DateTime @map("requested_at")
+  dataCompletedAt        DateTime? @map("data_completed_at")
+  approvedAt             DateTime? @map("approved_at")
+  rejectedAt             DateTime? @map("rejected_at")
+  processingStartedAt    DateTime? @map("processing_started_at")
+  completedAt            DateTime? @map("completed_at")
+  targetCompletionDays   Int?     @map("target_completion_days")
+  targetCompletionDueAt  DateTime? @map("target_completion_due_at")
+  targetCompletionClockStart String?   @map("target_completion_clock_start") // aturan, bukan tanggal
+  completionNotificationMode String? @map("completion_notification_mode")
+  completionNotificationId String?  @map("completion_notification_id")
+
+  // Dijual pisah, bukan JSON, agar bisa diverifikasi admin sebelum transfer.
+  destMethod         String? @map("dest_method")          // BANK_TRANSFER | E_WALLET
+  destProviderName   String? @map("dest_provider_name")
+  destAccountNumber  String? @map("dest_account_number")
+  destAccountHolder  String? @map("dest_account_holder")
+  destIsDummy        Boolean @default(true) @map("dest_is_dummy")
+  manualProcessedBy  String? @map("manual_processed_by")
+  manualTransferRef  String? @map("manual_transfer_reference")
+  manualTransferDate DateTime? @map("manual_transfer_date")
+  manualProofRef     String? @map("manual_proof_reference")
+  manualAdminNote    String? @map("manual_admin_note")
+
+  event     Event  @relation(fields: [eventId], references: [id])
+  order     Order  @relation(fields: [orderId], references: [id])
+  requester User?  @relation("refundRequester", fields: [requestedByUserId], references: [id])
+
+  lines      RefundLine[]
+  histories  RefundStatusHistory[]
+  actions    RefundAdminAction[]
+  notifications NotificationLog[]
+
+  @@index([eventId])
+  @@index([orderId])
+  @@index([status])
+  @@map("refunds")
+}
+
+/// Refund dicatat per tiket (mendukung refund parsial §8.7).
+model RefundLine {
+  id         String @id @map("refund_line_id")
+  refundId   String @map("refund_id")
+  ticketId   String @map("ticket_id")
+  orderId    String @map("order_id")
+  amount     Int
+
+  refund Refund @relation(fields: [refundId], references: [id], onDelete: Cascade)
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  order  Order  @relation(fields: [orderId], references: [id])
+
+  @@unique([refundId, ticketId])
+  @@index([ticketId])
+  @@map("refund_lines")
+}
+
+model RefundStatusHistory {
+  id          String   @id @map("history_id")
+  refundId    String   @map("refund_id")
+  fromStatus  String?  @map("from_status")
+  toStatus    String   @map("to_status")
+  changedAt   DateTime @map("changed_at")
+  changedBy   String?  @map("changed_by")
+  reason      String?
+
+  refund Refund @relation(fields: [refundId], references: [id], onDelete: Cascade)
+
+  @@index([refundId, changedAt])
+  @@map("refund_status_histories")
+}
+
+model RefundAdminAction {
+  id          String   @id @map("action_id")
+  refundId    String   @map("refund_id")
+  actionType  String   @map("action_type")
+  performedBy String?  @map("performed_by")
+  performedAt DateTime @map("performed_at")
+  result      String?
+  note        String?
+
+  refund Refund @relation(fields: [refundId], references: [id], onDelete: Cascade)
+
+  @@index([refundId])
+  @@map("refund_admin_actions")
+}
+
+// ---------- notifikasi ----------
+
+model NotificationTemplate {
+  id           String  @id @map("template_id")
+  channel      String  @default("WHATSAPP")
+  templateName String  @map("template_name")
+  triggerMode  String  @map("trigger_mode") // SYSTEM_TRIGGERED | MANUAL_ADMIN
+  active       Boolean @default(true)
+  message      String
+
+  logs NotificationLog[]
+
+  @@map("notification_templates")
+}
+
+model NotificationLog {
+  id              String   @id @map("notification_id")
+  templateId      String?  @map("template_id")
+  eventId         String?  @map("event_id")
+  orderId         String?  @map("order_id")
+  refundId        String?  @map("refund_id")
+  recipientUserId String?  @map("recipient_user_id")
+  recipientPhone  String?  @map("recipient_phone")
+  channel         String   @default("WHATSAPP")
+  triggerMode     String?  @map("trigger_mode")
+  notificationType String? @map("notification_type")
+  status          String   @default("QUEUED")
+  sentAt          DateTime? @map("sent_at")
+  sentBy          String?  @map("sent_by")
+  messagePreview  String?  @map("message_preview")
+
+  template  NotificationTemplate? @relation(fields: [templateId], references: [id])
+  event     Event?                @relation(fields: [eventId], references: [id])
+  order     Order?                @relation(fields: [orderId], references: [id])
+  refund    Refund?               @relation(fields: [refundId], references: [id])
+  recipient User?                 @relation("notificationRecipient", fields: [recipientUserId], references: [id])
+
+  @@index([eventId])
+  @@index([orderId])
+  @@map("notification_logs")
+}
+
+// ---------- audit & operasional ----------
+
+model AdminAuditLog {
+  id          String   @id @map("audit_id")
+  actorUserId String?  @map("actor_user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  occurredAt  DateTime @map("occurred_at")
+  details     String?  // JSON
+
+  actor User? @relation(fields: [actorUserId], references: [id])
+
+  @@index([entityType, entityId])
+  @@map("admin_audit_logs")
+}
+
+model ParticipantChangeLog {
+  id                 String   @id @map("change_log_id")
+  ticketId           String   @map("ticket_id")
+  changedBy          String?  @map("changed_by")
+  oldParticipantName String?  @map("old_participant_name")
+  newParticipantName String?  @map("new_participant_name")
+  changedAt          DateTime @map("changed_at")
+  changeType         String   @map("change_type")
+  note               String?
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [changedBy], references: [id])
+
+  @@index([ticketId])
+  @@map("participant_change_logs")
+}
+
+model EventCancellationRecord {
+  id                            String   @id @map("cancellation_id")
+  eventId                       String   @unique @map("event_id")
+  cancelledBy                   String?  @map("cancelled_by")
+  cancelledAt                   DateTime @map("cancelled_at")
+  reason                        String?
+  affectedOrderIds              String?  @map("affected_order_ids")   // JSON array
+  affectedTicketIds             String?  @map("affected_ticket_ids")  // JSON array
+  refundFlow                    String?  @map("refund_flow")
+  customerNotificationTemplateId String? @map("customer_notification_template_id")
+  autoRefundExecuted            Boolean  @default(false) @map("auto_refund_executed")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  admin User? @relation(fields: [cancelledBy], references: [id])
+
+  @@map("event_cancellation_records")
+}
+
+/// Pengaturan sistem sebagai key-value, supaya aturan (10 menit hold, 7 menit pending) tidak hardcode.
+model SystemSetting {
+  key       String @id
+  value     String
+  valueType String @map("value_type") // number | string | boolean | json
+  group     String?
+  note      String?
+
+  @@map("system_settings")
+}

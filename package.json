@@ -6,9 +6,17 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset --force",
+    "db:studio": "prisma studio"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.mjs"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "next": "16.4.5",
     "react": "19.3.0",
     "react-dom": "19.3.0"
@@ -25,6 +33,7 @@
     "eslint-config-next": "16.4.5",
     "jsdom": "^31.0.0",
     "postcss": "^8.5.32",
+    "prisma": "^6.19.3",
     "tailwindcss": "^4.3.4",
     "typescript": "^5",
     "vite": "^6.4.5",
