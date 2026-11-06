@@ -3,9 +3,13 @@ import { Suspense } from "react";
 import { getCurrentAdmin } from "@/lib/auth/guard";
 import { AdminSidebar } from "@/components/shared/AdminSidebar";
 import { AdminTopbar } from "@/components/shared/AdminTopbar";
+import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
+    <ToastProvider>
+    <ConfirmProvider>
     <div className="shell">
       <Suspense fallback={<aside className="sidebar" aria-hidden="true" />}>
         <AdminChrome />
@@ -19,6 +23,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
     </div>
+    </ConfirmProvider>
+    </ToastProvider>
   );
 }
 

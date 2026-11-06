@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { tickets } from "@/lib/data/admin";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
+import { useToast } from "@/components/ui/Toast";
 
 type MiniOrder = { id: string; buyer: string; paymentStatus: string };
 type Outcome = { kind: "valid" | "used" | "invalid"; line: string; detail: string };
@@ -10,8 +12,23 @@ type Outcome = { kind: "valid" | "used" | "invalid"; line: string; detail: strin
 const ICON = { valid: "\u2713", used: "!", invalid: "\u2715" } as const;
 
 export function QrScanner({ orders }: { orders: MiniOrder[] }) {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [result, setResult] = useState<Outcome | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
+
+  const handleScan = async (orderId: string) => {
+    const agreed = await confirm({
+      title: `Proses scan ${orderId}?`,
+      description: "Check-in yang sudah diterima tidak bisa dibatalkan. Pastikan QR dan event sudah benar.",
+      confirmLabel: "Ya, proses scan",
+    });
+    if (!agreed) {
+      toast("Scan dibatalkan.", "info");
+      return;
+    }
+    scan(orderId);
+  };
 
   /* §8.6: scan diterima selama jumlah scan < jumlah tiket valid. */
   const scan = (orderId: string) => {
@@ -62,7 +79,7 @@ export function QrScanner({ orders }: { orders: MiniOrder[] }) {
         </p>
         <div className="chips" style={{ marginTop: 14 }}>
           {orders.map((o) => (
-            <button key={o.id} type="button" className="chip" onClick={() => scan(o.id)}>
+            <button key={o.id} type="button" className="chip" onClick={() => handleScan(o.id)}>
               Scan {o.id}
             </button>
           ))}

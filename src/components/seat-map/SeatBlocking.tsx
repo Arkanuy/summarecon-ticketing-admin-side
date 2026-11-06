@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
+import { useToast } from "@/components/ui/Toast";
 import type { SeatStatus } from "@/types/admin";
 
 const LABEL: Record<SeatStatus, string> = {
@@ -30,6 +32,8 @@ export function SeatBlocking({
   rows: string[];
   cols: number;
 }) {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [state, setState] = useState<Record<string, SeatStatus>>(seats);
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -38,7 +42,21 @@ export function SeatBlocking({
     setSelected((prev) => (prev.includes(seat) ? prev.filter((s) => s !== seat) : [...prev, seat]));
 
   /* §6.2 no.14–16: kursi terjual / ditahan tidak boleh diblokir. */
-  const commit = (target: "blocked" | "available") => {
+  const commit = async (target: "blocked" | "available") => {
+    const count = selected.length;
+    const agreed = await confirm({
+      title: target === "blocked" ? `Blokir ${count} kursi?` : `Lepas blokir ${count} kursi?`,
+      description:
+        target === "blocked"
+          ? "Kursi terblokir tidak bisa dipilih peserta dan kapasitas area dihitung ulang (§6.2 no.14–16)."
+          : "Kursi akan kembali tersedia dan bisa dipesan peserta.",
+      confirmLabel: target === "blocked" ? "Ya, blokir" : "Ya, lepas",
+      tone: target === "blocked" ? "danger" : "default",
+    });
+    if (!agreed) {
+      toast("Dibatalkan, kursi tidak berubah.", "info");
+      return;
+    }
     setState((prev) => {
       const copy = { ...prev };
       for (const seat of selected) {
@@ -49,6 +67,7 @@ export function SeatBlocking({
       return copy;
     });
     setSelected([]);
+    toast(target === "blocked" ? `${count} kursi diblokir.` : `${count} kursi dibuka kembali.`, "ok");
   };
 
   const blocked = Object.values(state).filter((s) => s === "blocked").length;

@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 
 /* Bar tipis: konteks halaman + aksi. Navigasi ada di sidebar. */
 export function AdminTopbar({ userName = "Admin", roleId = "ROLE-ADMIN" }: { userName?: string; roleId?: string }) {
   const [dark, setDark] = useState(false);
   const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
 
   const initials = userName
     .split(" ")
@@ -15,6 +17,13 @@ export function AdminTopbar({ userName = "Admin", roleId = "ROLE-ADMIN" }: { use
     .join("");
 
   async function logout() {
+    const agreed = await confirm({
+      title: "Keluar dari dashboard?",
+      description: "Sesi di perangkat ini akan dicabut. Kamu perlu masuk lagi untuk melanjutkan.",
+      confirmLabel: "Ya, keluar",
+      tone: "danger",
+    });
+    if (!agreed) return;
     setBusy(true);
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/login";
