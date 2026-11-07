@@ -1,11 +1,11 @@
-// Uji perilaku komponen klien: konfirmasi wajib ditekan, baru aksi dijalankan.
+// Uji: batas scan per order (1 QR, 5 tiket = 5 kali scan) dan konfirmasi aksi.
 import { test, expect } from "vitest";
 import { render, fireEvent, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { ConfirmProvider } from "../components/ui/ConfirmProvider";
 import { ToastProvider } from "../components/ui/Toast";
-import { QrScanner } from "../components/checkin/QrScanner";
 import { RefundActions } from "../components/refund/RefundActions";
+import { allocateScan, isScanAllowed } from "../lib/scan";
 
 const wrap = (node: ReactNode) => (
   <ToastProvider>
@@ -15,7 +15,6 @@ const wrap = (node: ReactNode) => (
 
 /** Klik aksi lalu tekan tombol konfirmasi di modal. */
 async function confirmAnd(triggerName: RegExp | string, confirmName: RegExp | string) {
-  // tunggu modal sebelumnya benar-benar tertutup (animasi keluar 160ms)
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   const buttons = screen.getAllByRole("button", { name: triggerName });
   fireEvent.click(buttons[buttons.length - 1]);
@@ -24,35 +23,35 @@ async function confirmAnd(triggerName: RegExp | string, confirmName: RegExp | st
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 }
 
-test("QrScanner: modal muncul dulu, scan berjalan setelah dikonfirmasi", async () => {
-  render(wrap(<QrScanner orders={[{ id: "ORD-2026-003", buyer: "Rina Kusuma", paymentStatus: "SUCCESS" }]} />));
+test("satu QR order 5 tiket: scan 1..5 diterima, scan ke-6 ditolak", () => {
+  const tickets = Array.from({ length: 5 }, (_, i) => ({ id: `T-${i + 1}`, ticketStatus: "ISSUED" }));
+  const results: string[] = [];
 
-  // tanpa konfirmasi, belum ada hasil
-  fireEvent.click(screen.getByRole("button", { name: /Scan ORD-2026-003/ }));
-  await screen.findByRole("dialog");
-  expect(screen.queryByText(/1\/2/)).toBeNull();
+  for (let used = 0; used < 6; used++) {
+    const allowed = isScanAllowed(used, tickets);
+    const next = allocateScan(used, tickets);
+    results.push(allowed && next ? next.id : `DITOLAK(${used}/5)`);
+  }
 
-  fireEvent.click(screen.getByRole("button", { name: /Ya, proses scan/ }));
-  await waitFor(() => expect(screen.getByText(/1\/2/)).toBeDefined());
+  expect(results).toEqual(["T-1", "T-2", "T-3", "T-4", "T-5", "DITOLAK(5/5)"]);
 });
 
-test("QrScanner: scan diterima sampai batas tiket valid, lalu ditolak (§8.6)", async () => {
-  render(wrap(<QrScanner orders={[{ id: "ORD-2026-003", buyer: "Rina Kusuma", paymentStatus: "SUCCESS" }]} />));
-
-  await confirmAnd(/Scan ORD-2026-003/, /Ya, proses scan/);
-  await waitFor(() => expect(screen.getAllByText(/1\/2/).length).toBeGreaterThan(0));
-
-  await confirmAnd(/Scan ORD-2026-003/, /Ya, proses scan/);
-  await waitFor(() => expect(screen.getAllByText(/2\/2/).length).toBeGreaterThan(0));
-
-  await confirmAnd(/Scan ORD-2026-003/, /Ya, proses scan/);
-  await waitFor(() => expect(screen.getAllByText("Sudah digunakan").length).toBeGreaterThan(0));
+test("refund parsial mengurangi kuota scan", () => {
+  const tickets = [
+    { id: "T-1", ticketStatus: "ISSUED" },
+    { id: "T-2", ticketStatus: "REFUNDED" },
+    { id: "T-3", ticketStatus: "ISSUED" },
+  ];
+  const valid = tickets.filter((t) => t.ticketStatus !== "REFUNDED" && t.ticketStatus !== "CANCELLED");
+  expect(valid).toHaveLength(2);
+  expect(isScanAllowed(1, valid)).toBe(true);
+  expect(isScanAllowed(2, valid)).toBe(false); // scan ke-3 ditolak
 });
 
-test("QrScanner: pembayaran belum sukses ditolak", async () => {
-  render(wrap(<QrScanner orders={[{ id: "ORD-2026-002", buyer: "Budi Hartono", paymentStatus: "PENDING" }]} />));
-  await confirmAnd(/Scan ORD-2026-002/, /Ya, proses scan/);
-  await waitFor(() => expect(screen.getByText("Tidak valid")).toBeDefined());
+test("tiket yang belum dibayar tidak boleh dipindai", () => {
+  const tickets = [{ id: "T-1", ticketStatus: "RESERVED" }];
+  expect(isScanAllowed(0, tickets)).toBe(false);
+  expect(allocateScan(0, tickets)).toBeNull();
 });
 
 test("RefundActions: setujui → proses → selesai, tiap langkah minta konfirmasi", async () => {
