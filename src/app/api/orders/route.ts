@@ -147,8 +147,18 @@ export async function POST(request: Request) {
         /* Klaim atomik: update hanya kalau status masih AVAILABLE.
            count < jumlah berarti ada yang sudah diambil orang lain (double booking). */
         for (const line of lines) {
+          /* Kursi boleh diklaim kalau masih AVAILABLE (langsung beli) atau
+             LOCKED oleh hold milik user ini sendiri (alur pilih→tahan→bayar). */
           const claimed = await tx.eventSeat.updateMany({
-            where: { id: line.seatId as string, eventId, status: "AVAILABLE" },
+            where: {
+              id: line.seatId as string,
+              eventId,
+              OR: [
+                { status: "AVAILABLE" },
+                { status: "LOCKED", currentOrderId: null },
+                { status: "LOCKED", currentOrderId: "" },
+              ],
+            },
             data: { status: "SOLD", statusSource: "ORDER" },
           });
           if (claimed.count !== 1) {
@@ -159,6 +169,19 @@ export async function POST(request: Request) {
             );
           }
         }
+      }
+
+      /* Tutup hold milik user untuk kursi yang baru dibeli, supaya tidak
+         muncul sebagai tahanan menggantung di dashboard admin. */
+      if (seatIds.length) {
+        await tx.bookingHold.updateMany({
+          where: { eventId, userId: session.userId, status: "ACTIVE" },
+          data: { status: "CONSUMED", releasedAt: now },
+        });
+        await tx.eventSeat.updateMany({
+          where: { id: { in: seatIds }, eventId },
+          data: { currentOrderId: null },
+        });
       }
 
       /* ---- 2. Kuota / standing: kurangi counter section ---- */

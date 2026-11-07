@@ -17,9 +17,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id: eventId } = await params;
   const body = await request.json().catch(() => null);
   const seatIds: string[] = Array.isArray(body?.event_seat_ids) ? body.event_seat_ids : [];
-  const userId = body?.user_id as string | undefined;
+  /* user_id diambil dari sesi; body.user_id hanya untuk kompatibilitas klien lama. */
+  const userId = (body?.user_id as string | undefined) ?? guard.user.userId;
 
-  if (!userId) return badRequest("user_id wajib diisi");
   if (!seatIds.length) return badRequest("event_seat_ids minimal satu kursi");
 
   const holdMinutes = Number(
