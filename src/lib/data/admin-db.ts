@@ -273,20 +273,111 @@ export async function getAdminRefund(id: string) {
 
 export async function getAdminVenues() {
   const venues = await prisma.venue.findMany({
-    include: { layoutTemplates: true, _count: { select: { events: true } } },
+    include: {
+      layoutTemplates: { include: { events: { select: { id: true, eventName: true } } } },
+      _count: { select: { events: true } },
+    },
     orderBy: { venueName: "asc" },
   });
+
+  /* Kapasitas resmi null di data contoh; hitung dari section event supaya tidak kosong. */
+  const capacities = await prisma.eventSection.groupBy({
+    by: ["eventId"],
+    _sum: { capacity: true },
+  });
+  const events = await prisma.event.findMany({ select: { id: true, venueId: true } });
+  const capByEvent = new Map(capacities.map((c) => [c.eventId, c._sum.capacity ?? 0]));
+  const capByVenue = new Map<string, number>();
+  for (const e of events) {
+    capByVenue.set(e.venueId, (capByVenue.get(e.venueId) ?? 0) + (capByEvent.get(e.id) ?? 0));
+  }
+
   return venues.map((v) => ({
     id: v.id,
     code: v.venueCode,
     name: v.venueName,
-    city: v.locationLabel ?? "—",
+    alias: v.venueAlias ?? null,
+    location: v.locationLabel ?? "—",
     type: v.venueType ?? "—",
-    capacity: v.capacityOfficial,
+    floor: v.floor ?? null,
+    capacityOfficial: v.capacityOfficial,
+    capacityComputed: capByVenue.get(v.id) ?? 0,
+    capacityStatus: v.capacityValidationStatus ?? null,
     status: v.status,
+    notes: v.notes ?? null,
     eventCount: v._count.events,
-    templateCount: v.layoutTemplates.length,
+    templates: v.layoutTemplates.map((t) => ({
+      id: t.id,
+      name: t.templateName,
+      version: t.version,
+      status: t.templateStatus,
+      bookingTypes: (() => {
+        try {
+          return JSON.parse(t.activeBookingTypes ?? "[]") as string[];
+        } catch {
+          return [];
+        }
+      })(),
+      eventCount: t.events.length,
+    })),
   }));
+}
+
+/** Detail satu venue: layout template, elemen, dan event yang memakainya. */
+export async function getAdminVenue(id: string) {
+  const venues = await getAdminVenues();
+  const base = venues.find((v) => v.id === id);
+  if (!base) return null;
+
+  const layout = await prisma.layoutTemplate.findMany({ where: { venueId: id } });
+  const events = await prisma.event.findMany({
+    where: { venueId: id },
+    include: { sections: true, categories: true },
+    orderBy: { startAt: "desc" },
+  });
+
+  const elements = layout.flatMap((t) => {
+    try {
+      return JSON.parse(t.layoutElements ?? "[]") as { name?: string; element_type?: string; ticketable?: boolean }[];
+    } catch {
+      return [];
+    }
+  });
+
+  return {
+    ...base,
+    layouts: layout.map((t) => ({
+      id: t.id,
+      name: t.templateName,
+      version: t.version,
+      status: t.templateStatus,
+      sourcePage: t.sourceBlueprintPage,
+      bookingTypes: (() => {
+        try {
+          return JSON.parse(t.activeBookingTypes ?? "[]") as string[];
+        } catch {
+          return [];
+        }
+      })(),
+      elements: (() => {
+        try {
+          return JSON.parse(t.layoutElements ?? "[]") as { name?: string; element_type?: string; ticketable?: boolean }[];
+        } catch {
+          return [];
+        }
+      })(),
+    })),
+    elements,
+    events: events.map((e) => ({
+      id: e.id,
+      name: e.eventName,
+      status: e.eventStatus,
+      startAt: e.startAt,
+      capacity: e.sections.reduce((s, x) => s + x.capacity, 0),
+      sold: e.sections.reduce((s, x) => s + x.soldQuantity, 0),
+      categories: e.categories.length,
+    })),
+  };
 }
 
 export async function getAdminUsers() {

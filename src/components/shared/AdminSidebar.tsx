@@ -26,6 +26,7 @@ const GROUPS: { title: string; items: NavLink[] }[] = [
     items: [
       { href: "/reports", label: "Laporan", icon: "M4 19h16M7 15V9M12 15V5M17 15v-4" },
       { href: "/users", label: "Pengguna", icon: "M12 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM5 20c0-3.3 3.1-5.5 7-5.5s7 2.2 7 5.5" },
+      { href: "/api-docs", label: "API & Data", icon: "M4 6h16v12H4zM4 10h16M8 14h4" },
     ],
   },
 ];

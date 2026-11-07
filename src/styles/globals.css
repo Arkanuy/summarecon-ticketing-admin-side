@@ -472,6 +472,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .tier-check input { width: 16px; height: 16px; }
 @media (max-width: 900px) { .tier-form { grid-template-columns: 1fr; } }
 
+.method { display: inline-block; padding: 2px 8px; border-radius: 6px; font-family: "Plus Jakarta Sans", sans-serif; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+.method-get { background: color-mix(in srgb, var(--ok) 16%, var(--surface)); color: var(--ok-text); }
+.method-post { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); color: var(--hold-text); }
+.method-patch { background: var(--soft-purple); color: var(--purple-dark); }
+.method-delete { background: color-mix(in srgb, var(--error) 14%, var(--surface)); color: var(--error); }
+
 /* ---------- dark tweaks ---------- */
 
 :root[data-theme="dark"] .table th { background: rgba(58,34,41,.5); }
