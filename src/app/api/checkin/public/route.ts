@@ -95,13 +95,24 @@ export async function POST(request: Request) {
   }
 }
 
-/** GET /api/checkin/public?event_id= — daftar event untuk pemilih di perangkat. */
+/**
+ * GET /api/checkin/public — daftar event untuk pemilih di perangkat petugas.
+ * Semua event dikembalikan (petugas perlu bisa memilih venue/event lain), yang batal ditandai.
+ */
 export async function GET(request: Request) {
   if (!scanAuthorized(request)) return unauthorized();
   const events = await prisma.event.findMany({
-    where: { eventStatus: { in: ["SALES_OPEN", "ONGOING", "PUBLISHED"] } },
-    orderBy: { startAt: "desc" },
-    select: { id: true, eventName: true, startAt: true },
+    orderBy: [{ startAt: "desc" }],
+    select: { id: true, eventName: true, startAt: true, eventStatus: true, venue: { select: { venueName: true } } },
   });
-  return ok(events.map((e) => ({ event_id: e.id, event_name: e.eventName, start_at: e.startAt })));
+  return ok(
+    events.map((e) => ({
+      event_id: e.id,
+      event_name: e.eventName,
+      start_at: e.startAt,
+      status: e.eventStatus,
+      venue: e.venue.venueName,
+      selectable: e.eventStatus !== "CANCELLED",
+    })),
+  );
 }

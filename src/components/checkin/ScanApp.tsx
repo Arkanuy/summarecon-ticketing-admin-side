@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 
-type EventOption = { event_id: string; event_name: string };
+type EventOption = { event_id: string; event_name: string; venue?: string; status?: string; selectable?: boolean };
 
 type Outcome =
   | { kind: "valid"; name: string; ticketId: string; scan: string; remaining: number; event: string }
@@ -51,12 +51,12 @@ export function ScanApp() {
       return;
     }
     const payload = await response.json();
-    const list: EventOption[] = (payload?.data ?? []).map((e: { event_id: string; event_name: string }) => ({
-      event_id: e.event_id,
-      event_name: e.event_name,
-    }));
+    const list: EventOption[] = (payload?.data ?? []) as EventOption[];
     setEvents(list);
-    const pick = list.find((e) => e.event_id === preferredEvent) ?? list[0];
+    const pick =
+      list.find((e) => e.event_id === preferredEvent) ??
+      list.find((e) => e.selectable !== false) ??
+      list[0];
     setEventId(pick?.event_id ?? "");
     if (pick) sessionStorage.setItem(EVENT_KEY, pick.event_id);
     sessionStorage.setItem(CODE_KEY, value);
@@ -222,11 +222,18 @@ export function ScanApp() {
             aria-label="Pilih event"
           >
             {events.map((ev) => (
-              <option key={ev.event_id} value={ev.event_id}>{ev.event_name}</option>
+              <option key={ev.event_id} value={ev.event_id}>
+                {ev.event_name}
+                {ev.venue ? ` — ${ev.venue}` : ""}
+                {ev.status ? ` (${ev.status.toLowerCase().replace("_", " ")})` : ""}
+              </option>
             ))}
           </select>
         ) : (
-          <span className="scan-event-name">{events[0]?.event_name ?? "—"}</span>
+          <span className="scan-event-name">
+            {events[0]?.event_name ?? "—"}
+            {events[0]?.venue ? ` · ${events[0].venue}` : ""}
+          </span>
         )}
       </header>
 
