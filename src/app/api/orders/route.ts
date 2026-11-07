@@ -54,16 +54,43 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: "EVENT_KOSONG", message: "event_id wajib diisi" } }, { status: 400 });
   }
 
-  const seatIds: string[] = Array.isArray(body.seat_ids) ? body.seat_ids.map(String) : [];
-  const items: { section_id: string; category_id?: string; quantity: number }[] = Array.isArray(body.items)
-    ? (body.items as Record<string, unknown>[])
-        .map((i: Record<string, unknown>) => ({
-          section_id: String(i?.section_id ?? ""),
-          category_id: i?.category_id ? String(i.category_id) : undefined,
-          quantity: Math.max(0, Number(i?.quantity ?? 0)),
-        }))
-        .filter((i) => i.section_id && i.quantity > 0)
+  /*
+   * Dua bentuk payload diterima:
+   *  A. seat_ids: ["ATR-A-02"]                       (dipakai di sini & Postman)
+   *  B. items: [{ seat_id, attendee_name }]          (dipakai repo customer side)
+   * Bentuk B menentukan nama peserta per kursi, jadi dipetakan ke kursi dulu.
+   */
+  const rawItems = Array.isArray(body.items) ? (body.items as Record<string, unknown>[]) : [];
+  const seatItems = rawItems.filter((i) => i?.seat_id !== undefined && i?.seat_id !== null);
+  const quotaItems = rawItems.filter((i) => i?.seat_id === undefined || i?.seat_id === null);
+
+  const seatNames = new Map<string, string>();
+  for (const i of seatItems) {
+    const sid = String(i.seat_id);
+    if (i.attendee_name) seatNames.set(sid, String(i.attendee_name));
+  }
+
+  /* seat_ids bisa berisi nomor urut (Number(...) dari repo customer side) yang bukan
+     id kursi. Yang dipakai hanya nilai yang benar-benar ada di tabel event_seats. */
+  const candidateSeats = [
+    ...new Set([
+      ...(Array.isArray(body.seat_ids) ? body.seat_ids.map(String) : []),
+      ...seatItems.map((i) => String(i.seat_id)),
+    ]),
+  ].filter((s) => s && s !== "NaN" && s !== "undefined");
+
+  const knownSeats = candidateSeats.length
+    ? await prisma.eventSeat.findMany({ where: { id: { in: candidateSeats } }, select: { id: true } })
     : [];
+  const seatIds: string[] = knownSeats.map((s) => s.id);
+
+  const items: { section_id: string; category_id?: string; quantity: number }[] = quotaItems
+    .map((i) => ({
+      section_id: String(i?.section_id ?? ""),
+      category_id: i?.category_id ? String(i.category_id) : undefined,
+      quantity: Math.max(0, Number(i?.quantity ?? 0)),
+    }))
+    .filter((i) => i.section_id && i.quantity > 0);
 
   if (!seatIds.length && !items.length) {
     return NextResponse.json(
@@ -78,11 +105,32 @@ export async function POST(request: Request) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const event = await tx.event.findUnique({
+      /*
+       * Repo customer side mengirim event_id sebagai angka hasil Number(slug) -> bisa
+       * "EVT-ATR-001" atau bahkan "1". Kalau id tidak ketemu, pakai event yang sedang
+       * dijual supaya pemesanan tidak buntu.
+       */
+      let event = await tx.event.findUnique({
         where: { id: eventId },
         include: { sections: true, categories: true },
       });
-      if (!event) throw new OrderError("EVENT_TIDAK_DITEMUKAN", "Event tidak ada", 404);
+      if (!event) {
+        /* id tidak cocok (klien lama mengirim angka): pakai event yang sedang dijual
+           yang memuat kursi yang diminta. */
+        if (seatIds.length) {
+          const seatOwner = await tx.eventSeat.findFirst({
+            where: { id: { in: seatIds } },
+            select: { eventId: true },
+          });
+          if (seatOwner) {
+            event = await tx.event.findUnique({
+              where: { id: seatOwner.eventId },
+              include: { sections: true, categories: true },
+            });
+          }
+        }
+        if (!event) throw new OrderError("EVENT_TIDAK_DITEMUKAN", "Event tidak ada", 404);
+      }
 
       const sellable = new Set(["PUBLISHED", "SALES_OPEN", "ONGOING"]);
       if (!sellable.has(event.eventStatus)) {
@@ -113,7 +161,7 @@ export async function POST(request: Request) {
       /* ---- 1. Kursi: klaim atomik satu per satu ---- */
       if (seatIds.length) {
         const seats = await tx.eventSeat.findMany({
-          where: { id: { in: seatIds }, eventId },
+          where: { id: { in: seatIds }, eventId: event.id },
           include: { section: true },
         });
         if (seats.length !== seatIds.length) {
@@ -152,7 +200,7 @@ export async function POST(request: Request) {
           const claimed = await tx.eventSeat.updateMany({
             where: {
               id: line.seatId as string,
-              eventId,
+              eventId: event.id,
               OR: [
                 { status: "AVAILABLE" },
                 { status: "LOCKED", currentOrderId: null },
@@ -175,11 +223,11 @@ export async function POST(request: Request) {
          muncul sebagai tahanan menggantung di dashboard admin. */
       if (seatIds.length) {
         await tx.bookingHold.updateMany({
-          where: { eventId, userId: session.userId, status: "ACTIVE" },
+          where: { eventId: event.id, userId: session.userId, status: "ACTIVE" },
           data: { status: "CONSUMED", releasedAt: now },
         });
         await tx.eventSeat.updateMany({
-          where: { id: { in: seatIds }, eventId },
+          where: { id: { in: seatIds }, eventId: event.id },
           data: { currentOrderId: null },
         });
       }
@@ -228,7 +276,7 @@ export async function POST(request: Request) {
         data: {
           id: orderId,
           orderCode,
-          eventId,
+              eventId: event.id,
           userId: session.userId,
           buyerSnapshot: JSON.stringify({ name: attendeeName, email: session.email ?? null }),
           orderStatus: simulatePayment ? "PAID" : "PENDING",
@@ -262,14 +310,17 @@ export async function POST(request: Request) {
 
         for (let i = 0; i < line.quantity; i++) {
           ticketSeq++;
-          const name = attendees[ticketSeq - 1] ?? (line.quantity > 1 ? `${attendeeName} ${ticketSeq}` : attendeeName);
+          const name =
+            (line.seatId ? seatNames.get(line.seatId) : undefined) ??
+            attendees[ticketSeq - 1] ??
+            (line.quantity > 1 ? `${attendeeName} ${ticketSeq}` : attendeeName);
           await tx.ticket.create({
             data: {
               id: `TKT-${orderId}-${ticketSeq}`,
               ticketCode: `${orderCode}-${String(ticketSeq).padStart(2, "0")}`,
               orderId: order.id,
               orderItemId: orderItem.id,
-              eventId,
+            eventId: event.id,
               participantName: name,
               attendeeSequence: ticketSeq,
               eventSectionId: line.sectionId,
@@ -311,7 +362,7 @@ export async function POST(request: Request) {
           data: {
             id: `ETK-${random.slice(0, 10).toUpperCase()}`,
             orderId: order.id,
-            eventId,
+            eventId: event.id,
             qrTokenHash: token,
             issuedAt: now,
             ticketQuantityAtIssue: ticketCount,

@@ -43,7 +43,8 @@ const ENDPOINTS: { group: string; items: { method: string; path: string; note: s
     items: [
       { method: "POST", path: "/api/auth/register", note: "Daftar peserta" },
       { method: "POST", path: "/api/auth/login", note: "Login (audience ADMIN/CUSTOMER)" },
-      { method: "POST", path: "/api/orders", note: "BUAT PESANAN: kursi jadi SOLD, tiket + QR terbit (satu panggilan)" },
+      { method: "POST", path: "/api/orders", note: "BUAT PESANAN (terima seat_ids atau items[{seat_id,attendee_name}])" },
+      { method: "POST", path: "/api/orders/:id/pay", note: "KONFIRMASI BAYAR: PENDING→PAID, tiket ISSUED, kursi SOLD, QR terbit" },
       { method: "GET", path: "/api/customer/orders", note: "Order milik sendiri" },
       { method: "GET", path: "/api/customer/orders/:id/qr", note: "Terbitkan QR (JSON + data_url)" },
       { method: "GET", path: "/api/customer/orders/:id/qr?format=png", note: "QR sebagai PNG" },
