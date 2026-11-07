@@ -11,13 +11,17 @@ import { prisma } from "@/lib/db";
 export async function releaseExpiredHolds(eventId?: string): Promise<number> {
   const now = new Date();
 
+  /* ACTIVE yang lewat waktu, DAN hold RELEASED yang kursinya tertinggal LOCKED.
+     Kasus kedua muncul saat pelepasan lama tidak menyentuh kursinya. */
   const expired = await prisma.bookingHold.findMany({
     where: {
-      status: "ACTIVE",
-      reservedUntil: { lt: now },
+      OR: [
+        { status: "ACTIVE", reservedUntil: { lt: now } },
+        { status: "RELEASED" },
+      ],
       ...(eventId ? { eventId } : {}),
     },
-    select: { id: true, eventSeatIds: true },
+    select: { id: true, eventSeatIds: true, status: true },
   });
 
   if (expired.length === 0) return 0;
@@ -39,10 +43,12 @@ export async function releaseExpiredHolds(eventId?: string): Promise<number> {
           data: { status: "AVAILABLE", statusSource: "HOLD_EXPIRED", currentOrderId: null },
         });
       }
-      await tx.bookingHold.update({
-        where: { id: hold.id },
-        data: { status: "EXPIRED", releasedAt: now, releaseReason: "RESERVED_UNTIL_PASSED" },
-      });
+      if (hold.status === "ACTIVE") {
+        await tx.bookingHold.update({
+          where: { id: hold.id },
+          data: { status: "EXPIRED", releasedAt: now, releaseReason: "RESERVED_UNTIL_PASSED" },
+        });
+      }
     });
 
     released++;
