@@ -1,12 +1,16 @@
 import { prisma } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
 import { requireCustomer } from "@/lib/auth/guard";
+import { settlePendingOrders } from "@/lib/settle";
 
 /** GET /api/customer/orders — daftar order milik peserta yang login. */
 export async function GET(request: Request) {
   const guard = await requireCustomer(request);
   if ("response" in guard) return guard.response;
   const { user } = guard;
+
+  /* Order PENDING dari alur bayar simulasi diselesaikan dulu supaya data tidak menggantung. */
+  await settlePendingOrders(user.userId).catch(() => 0);
 
   const orders = await prisma.order.findMany({
     where: { userId: user.userId },

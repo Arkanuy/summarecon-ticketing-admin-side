@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/db";
 import { ok, paging, pageMeta, parseJsonSafe } from "@/lib/api";
+import { settlePendingOrders } from "@/lib/settle";
 
 /** GET /api/bookings?status=&event_id=&q=&page=&perPage= */
 export async function GET(request: Request) {
+  /* Selesaikan order yang pembayarannya sudah ditandai lunas di sisi peserta. */
+  await settlePendingOrders().catch(() => 0);
+
   const url = new URL(request.url);
   const { page, perPage, skip, take } = paging(url);
   const status = url.searchParams.get("status");

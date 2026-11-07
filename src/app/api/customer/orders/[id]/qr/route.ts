@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, fail, notFound } from "@/lib/api";
 import { requireCustomer } from "@/lib/auth/guard";
 import { issueQrToken } from "@/lib/qr/token";
+import { settlePendingOrders } from "@/lib/settle";
 import QRCode from "qrcode";
 
 /**
@@ -16,6 +17,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { user } = guard;
 
   const { id } = await params;
+
+  /* Halaman e-ticket dibuka tepat setelah "bayar"; pastikan order PENDING selesai dulu. */
+  await settlePendingOrders(user.userId).catch(() => 0);
+
   const order = await prisma.order.findUnique({
     where: { id },
     include: { event: true, tickets: true, eTicket: true },
