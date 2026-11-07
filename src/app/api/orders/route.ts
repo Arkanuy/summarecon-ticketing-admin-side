@@ -137,7 +137,17 @@ export async function POST(request: Request) {
   }
 
   const attendeeName = String(body.attendee_name ?? session.name ?? "Peserta").trim();
-  const attendees: string[] = Array.isArray(body.attendees) ? body.attendees.map(String) : [];
+
+  /*
+   * Nama peserta: prioritas attendees[], lalu attendee_name pada items[] (urutan sama
+   * dengan kursi yang dikirim). seat_id dari repo customer side berupa nomor urut,
+   * jadi tidak bisa dipakai sebagai kunci — urutan yang dipakai.
+   */
+  const attendees: string[] = Array.isArray(body.attendees)
+    ? body.attendees.map(String)
+    : seatItems
+        .map((i) => (i?.attendee_name ? String(i.attendee_name) : ""))
+        .filter(Boolean);
   const simulatePayment = body.simulate_payment === true;
 
   /* Kursi tahanan yang sudah lewat waktu dilepas dulu, kalau tidak order selalu 409. */

@@ -6,7 +6,7 @@ import { PetalFan } from "@/components/shared/PetalMark";
 import { requireAdminPage } from "@/lib/auth/page";
 import { getAdminOrder } from "@/lib/data/admin-db";
 import { prisma } from "@/lib/db";
-import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, rupiah } from "@/lib/utils";
+import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, rupiah, fmtTanggal } from "@/lib/utils";
 
 export const instant = false;
 
@@ -73,7 +73,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               <PetalFan stroke="#fff" width={3} className="svg" />
               <small>E-TICKET · SATU QR PER ORDER</small>
               <h3>{order.event.name}</h3>
-              <p>{order.event.startAt.toLocaleDateString("id-ID", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })}</p>
+              <p>{fmtTanggal(order.event.startAt)}</p>
             </div>
             <div className="ticket-mid">
               <div><span>Kursi</span><b>{order.tickets.map((t) => t.seat ?? "—").join(", ") || "—"}</b></div>

@@ -103,7 +103,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           <span className="eyebrow"><i className="eyebrow-line" />{event.code}</span>
           <h1 className="page-title" style={{ marginTop: 6 }}>{event.name}</h1>
           <p className="page-lead">
-            {event.venueName} · {event.startAt.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })} · {MODE_LABEL[event.bookingMode]}
+            {event.venueName} · {event.startAt.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric", timeZone: "Asia/Jakarta" })} · {MODE_LABEL[event.bookingMode]}
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

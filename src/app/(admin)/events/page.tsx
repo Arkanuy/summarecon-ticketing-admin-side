@@ -16,9 +16,9 @@ const MODE_LABEL: Record<string, string> = {
 };
 
 const fmtDate = (d: Date) =>
-  d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+  d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
 const fmtTime = (d: Date) =>
-  d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }).replace(":", ".");
+  d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", ".");
 
 export default async function EventsPage() {
   await requireAdminPage();
@@ -53,7 +53,7 @@ export default async function EventsPage() {
             <div className="event-row" key={e.id}>
               <div className="date-chip">
                 <b>{e.startAt.getDate()}</b>
-                <span>{e.startAt.toLocaleDateString("id-ID", { month: "short" }).toUpperCase()}</span>
+                <span>{e.startAt.toLocaleDateString("id-ID", { month: "short", timeZone: "Asia/Jakarta" }).toUpperCase()}</span>
               </div>
               <div style={{ minWidth: 0 }}>
                 <Link href={`/events/${e.id}`} className="event-row-title">{e.name}</Link>

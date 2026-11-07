@@ -11,6 +11,39 @@ import type {
 
 export const rupiah = (value: number) => "Rp " + value.toLocaleString("id-ID");
 
+/**
+ * Zona waktu acara. Server VPS berjalan di UTC, jadi memformat tanggal tanpa
+ * timeZone membuat acara 20 Des 03.00 WIB tampil "19 Des".
+ */
+const TZ = "Asia/Jakarta";
+
+/** Tanggal acara: "Min, 20 Des 2026". */
+export const fmtTanggal = (d: Date | string) =>
+  new Date(d).toLocaleDateString("id-ID", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: TZ,
+  });
+
+/** Jam acara: "10.00". */
+export const fmtJam = (d: Date | string) =>
+  new Date(d).toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: TZ,
+  }).replace(":", ".");
+
+/** Tanggal + jam untuk tabel: "20 Des 2026 · 10.00". */
+export const fmtTanggalJam = (d: Date | string) =>
+  `${new Date(d).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: TZ,
+  })} · ${fmtJam(d)}`;
+
 export const titleCase = (value: string) =>
   value
     .toLowerCase()
