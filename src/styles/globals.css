@@ -22,6 +22,7 @@
   --hold-text: #805616;
   /* token tambahan supaya tidak ada hex liar yang cuma cocok di satu tema */
   --muted-2: #9c8b91;      /* label kecil, overline */
+  --note-ink: #6b5058;     /* teks kotak catatan, ikut tema */
   --muted-3: #8a7b82;      /* header tabel, label form */
   --nav-ink: #4c3d45;      /* teks menu sidebar */
   --card-raised: #ffffff;
@@ -55,6 +56,7 @@
   --ok-text: #4cc2ae;
   --hold-text: #f2b84f;
   --muted-2: #b9a8ae;
+  --note-ink: #f0d9dc;
   --muted-3: #b9a8ae;
   --nav-ink: #d6c4cb;
   --card-raised: #2e222c;
@@ -353,7 +355,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .kv:last-child { border-bottom: 0; }
 .kv dt { margin: 0; color: var(--muted-2); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; align-self: center; }
 .kv dd { margin: 0; font-weight: 600; text-align: right; }
-.note { margin: 14px 0; padding: 10px 12px; border: 1px solid var(--line-soft); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--soft-purple); color: #6b5058; font-size: 11.5px; line-height: 1.6; }
+.note { margin: 14px 0; padding: 10px 12px; border: 1px solid var(--line-soft); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--soft-purple); color: var(--note-ink); font-size: 11.5px; line-height: 1.6; }
 .empty { padding: 32px 16px; color: var(--muted); font-size: 12px; text-align: center; }
 .toggle-row { display: flex; align-items: center; gap: 8px; }
 .tgl { appearance: none; width: 36px; height: 20px; border-radius: 99px; background: var(--sold); position: relative; cursor: pointer; margin: 0; border: 0; flex: 0 0 36px; }

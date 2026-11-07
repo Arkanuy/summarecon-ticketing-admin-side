@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { VersionBadge, Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { PublishToggle } from "@/components/event/PublishToggle";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { requireAdminPage } from "@/lib/auth/page";
 import { getAdminEvents } from "@/lib/data/admin-db";
 import { EVENT_STATUS_LABEL, rupiah } from "@/lib/utils";
@@ -35,6 +35,7 @@ export default async function EventsPage() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <Link href="/reports" className="button button-secondary">Laporan</Link>
+          <Link href="/events/new" className="button button-primary">+ Event baru</Link>
         </div>
       </div>
 
@@ -66,7 +67,16 @@ export default async function EventsPage() {
               </div>
               <div><VersionBadge status={e.status} label={EVENT_STATUS_LABEL[e.status as keyof typeof EVENT_STATUS_LABEL] ?? e.status} /></div>
               <div className="event-row-side">
-                <PublishToggle published={e.published} label={e.name} />
+                <ToggleSwitch
+                  on={e.published}
+                  label={`Publikasikan ${e.name}`}
+                  endpoint={`/api/events/${e.id}`}
+                  bodyKey="published"
+                  onText={`"${e.name}" dipublikasikan.`}
+                  offText={`"${e.name}" ditarik ke draf.`}
+                  confirmOn={{ title: `Publikasikan "${e.name}"?`, description: "Event tampil ke peserta sesuai periode penjualan." }}
+                  confirmOff={{ title: `Tarik "${e.name}" dari publikasi?`, description: "Kembali ke draf, disembunyikan dari peserta." }}
+                />
                 <Link href={`/events/${e.id}`} className="button button-secondary button-small">Kelola</Link>
               </div>
             </div>

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
-import { ok, notFound, parseJsonSafe } from "@/lib/api";
+import { ok, notFound, parseJsonSafe, badRequest } from "@/lib/api";
+import { requireAdmin } from "@/lib/auth/guard";
 
 /** GET /api/events/:id — detail + section + kategori + ringkasan kursi. */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -68,4 +69,46 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       ? { cancelled_at: event.cancellation.cancelledAt, reason: event.cancellation.reason, auto_refund: event.cancellation.autoRefundExecuted }
       : null,
   });
+}
+
+/**
+ * PATCH /api/events/:id — publikasi / tarik event.
+ * Body: { published: boolean }
+ * Published -> SALES_OPEN kalau sekarang di dalam periode jual, selain itu PUBLISHED.
+ * Unpublished -> DRAFT.
+ */
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAdmin(request);
+  if ("response" in guard) return guard.response;
+
+  const { id } = await params;
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body.published !== "boolean") {
+    return badRequest("Kirim JSON { published: true|false }");
+  }
+
+  const event = await prisma.event.findUnique({ where: { id } });
+  if (!event) return notFound("Event");
+
+  let next: string;
+  if (body.published) {
+    const now = new Date();
+    const inWindow =
+      event.salesStartAt !== null &&
+      event.salesEndAt !== null &&
+      now >= event.salesStartAt &&
+      now <= event.salesEndAt;
+    next = inWindow ? "SALES_OPEN" : "PUBLISHED";
+    if (inWindow) {
+      // sudah dalam periode jual: catat waktu publikasi kalau belum ada
+      if (!event.publishedAt) {
+        await prisma.event.update({ where: { id }, data: { publishedAt: now } });
+      }
+    }
+  } else {
+    next = "DRAFT";
+  }
+
+  const updated = await prisma.event.update({ where: { id }, data: { eventStatus: next } });
+  return ok({ event_id: updated.id, event_status: updated.eventStatus, published: updated.eventStatus !== "DRAFT" });
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { VersionBadge } from "@/components/ui/Badge";
-import { PublishToggle } from "@/components/event/PublishToggle";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { EVENT_STATUS_LABEL, rupiah } from "@/lib/utils";
 import type { AdminEventRow } from "@/lib/data/admin-db";
 
@@ -42,7 +42,22 @@ export function EventRow({ event }: { event: AdminEventRow }) {
       </div>
 
       <div className="event-row-side">
-        <PublishToggle published={event.published} label={event.name} />
+        <ToggleSwitch
+          on={event.published}
+          label={`Publikasikan ${event.name}`}
+          endpoint={`/api/events/${event.id}`}
+          bodyKey="published"
+          onText={`"${event.name}" dipublikasikan.`}
+          offText={`"${event.name}" ditarik ke draf.`}
+          confirmOn={{
+            title: `Publikasikan "${event.name}"?`,
+            description: "Event akan tampil ke peserta dan memakai status sesuai periode penjualannya.",
+          }}
+          confirmOff={{
+            title: `Tarik "${event.name}" dari publikasi?`,
+            description: "Event kembali ke draf dan disembunyikan dari peserta. Pesanan yang sudah ada tidak berubah.",
+          }}
+        />
         <Link href={`/events/${event.id}`} className="button button-secondary button-small">
           Kelola
         </Link>

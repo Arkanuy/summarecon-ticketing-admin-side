@@ -25,7 +25,7 @@ export default async function DashboardPage() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <Link href="/reports" className="button button-secondary">Laporan</Link>
-          <Link href="/events" className="button button-primary">+ Event baru</Link>
+          <Link href="/events/new" className="button button-primary">+ Event baru</Link>
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { requireAdminPage } from "@/lib/auth/page";
 import { getAdminVenue } from "@/lib/data/admin-db";
 
@@ -29,7 +30,21 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
           <h1 className="page-title" style={{ marginTop: 6 }}>{venue.name}</h1>
           <p className="page-lead">{venue.location}{venue.floor ? ` · ${venue.floor}` : ""}</p>
         </div>
-        <Badge tone={venue.status === "ACTIVE" ? "ok" : "muted"}>{venue.status}</Badge>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span className="sub">{venue.status === "ACTIVE" ? "Aktif" : "Nonaktif"}</span>
+          <ToggleSwitch
+            on={venue.status === "ACTIVE"}
+            label={`Aktifkan ${venue.name}`}
+            endpoint={`/api/venues/${venue.id}`}
+            bodyKey="status"
+            onValue="ACTIVE"
+            offValue="INACTIVE"
+            onText={`${venue.name} diaktifkan.`}
+            offText={`${venue.name} dinonaktifkan.`}
+            confirmOn={{ title: `Aktifkan ${venue.name}?`, description: "Venue bisa dipakai untuk menyiapkan event baru." }}
+            confirmOff={{ title: `Nonaktifkan ${venue.name}?`, description: "Event yang sudah ada tetap utuh, tetapi venue ini tidak bisa dipakai untuk event baru." }}
+          />
+        </div>
       </div>
 
       <div className="stats">
