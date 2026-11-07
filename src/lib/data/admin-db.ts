@@ -33,6 +33,8 @@ export type AdminEventRow = {
   quota: number;
   priceFrom: number;
   categories: AdminCategory[];
+  /** Jumlah tiket terbit per event_section (sumber kebenaran "terjual"). */
+  soldBySection?: Map<string, number>;
 };
 
 /** Penjualan kategori = jumlah sold_quantity pada section yang memakainya. */
@@ -58,13 +60,35 @@ export async function getAdminEvents(): Promise<AdminEventRow[]> {
     include: { venue: true, sections: true, categories: true },
   });
 
+  /*
+   * Sumber kebenaran "terjual" adalah TIKET, bukan section.sold_quantity.
+   * Penjualan Book by Seat mengubah event_seats.status -> SOLD dan membuat tiket,
+   * tetapi tidak pernah menaikkan counter section, sehingga dashboard selalu
+   * menampilkan angka jauh lebih kecil dari yang benar.
+   */
+  const issued = await prisma.ticket.groupBy({
+    by: ["eventId", "eventSectionId"],
+    where: { ticketStatus: { in: ["ISSUED", "USED"] } },
+    _count: true,
+  });
+  const soldBySection = new Map<string, number>();
+  const soldByEvent = new Map<string, number>();
+  for (const g of issued) {
+    const sid = g.eventSectionId ?? "";
+    soldBySection.set(sid, (soldBySection.get(sid) ?? 0) + g._count);
+    soldByEvent.set(g.eventId, (soldByEvent.get(g.eventId) ?? 0) + g._count);
+  }
+
   return events.map((e) => {
     const categories: AdminCategory[] = e.categories.map((c) => ({
       id: c.id,
       name: c.categoryName,
       price: c.price,
       quota: c.quota,
-      sold: soldFor(c.id, e.sections),
+      /* Tiket terbit pada section milik kategori ini. */
+      sold: e.sections
+        .filter((s) => s.ticketCategoryId === c.id)
+        .reduce((a, s) => a + (soldBySection.get(s.id) ?? 0), 0),
       status: c.status,
       sectionIds: e.sections.filter((s) => s.ticketCategoryId === c.id).map((s) => s.id),
     }));
@@ -83,8 +107,9 @@ export async function getAdminEvents(): Promise<AdminEventRow[]> {
       venueName: e.venue.venueName,
       venueCity: e.venue.locationLabel ?? "Bandung",
       capacity: e.sections.reduce((a, s) => a + s.capacity, 0),
-      sold: categories.reduce((a, c) => a + c.sold, 0),
+      sold: soldByEvent.get(e.id) ?? 0,
       quota: categories.reduce((a, c) => a + c.quota, 0),
+      soldBySection,
       priceFrom: categories.length ? Math.min(...categories.map((c) => c.price)) : 0,
       categories,
     };
@@ -186,6 +211,8 @@ export async function getAdminOrder(id: string) {
           used: order.eTicket.successfulScanCount,
           remaining: Math.max(0, order.eTicket.validTicketCount - order.eTicket.successfulScanCount),
           summary: order.eTicket.ticketStatusSummary,
+          /* Token QR yang dicetak petugas — dulu kartu hanya menggambar pola hiasan. */
+          token: order.eTicket.qrTokenHash,
         }
       : null,
     refunds: order.refunds.map((r) => ({ id: r.id, status: r.status, amount: r.refundAmount })),

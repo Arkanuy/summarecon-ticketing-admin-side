@@ -340,7 +340,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .ticket-mid span { display: block; color: var(--muted); font-size: 9px; letter-spacing: .04em; }
 .ticket-mid b { font-family: "Plus Jakarta Sans", sans-serif; font-size: 13px; }
 .ticket-qr { display: flex; justify-content: center; padding: 16px; }
-.qr-box { width: 96px; height: 96px; border-radius: 8px; background: conic-gradient(var(--ink) 25%, transparent 0 50%, var(--ink) 0 75%, transparent 0) 0 0/18px 18px; opacity: .85; }
+.qr-box { width: 96px; height: 96px; border-radius: 8px; background: repeating-linear-gradient(45deg, var(--line-soft), var(--line-soft) 6px, var(--surface) 6px, var(--surface) 12px); border: 1px dashed var(--line-strong); }
+/* QR sungguhan dari token order (sebelumnya hanya pola hiasan). */
+.qr-real { width: 120px; height: 120px; border-radius: 8px; background: #fff; padding: 4px; display: block; }
+.ticket-qr { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.qr-caption { font-size: 10px; color: var(--muted-3); font-weight: 600; letter-spacing: .04em; }
 
 .res { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 12px 14px; border-radius: 10px; font-family: "Plus Jakarta Sans", sans-serif; font-size: 14px; font-weight: 700; }
 .res small { display: block; margin-top: 1px; font-family: "DM Sans", sans-serif; font-size: 11px; font-weight: 500; opacity: .85; }

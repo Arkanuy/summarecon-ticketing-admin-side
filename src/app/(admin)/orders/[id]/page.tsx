@@ -7,6 +7,7 @@ import { requireAdminPage } from "@/lib/auth/page";
 import { getAdminOrder } from "@/lib/data/admin-db";
 import { prisma } from "@/lib/db";
 import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, rupiah, fmtTanggal } from "@/lib/utils";
+import { QrImage } from "@/components/orders/QrImage";
 
 export const instant = false;
 
@@ -80,7 +81,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               <div><span>Peserta</span><b>{order.tickets.length}</b></div>
               <div><span>Scan</span><b>{order.eTicket ? `${order.eTicket.used}/${order.eTicket.valid}` : "—"}</b></div>
             </div>
-            <div className="ticket-qr"><div className="qr-box" role="img" aria-label="Pratinjau QR order" /></div>
+            <div className="ticket-qr">
+              <QrImage token={order.eTicket?.token ?? null} />
+              <small className="qr-caption">
+                {order.eTicket ? `Scan ${order.eTicket.used}/${order.eTicket.valid}` : "QR belum terbit"}
+              </small>
+            </div>
           </div>
         </div>
       </div>
