@@ -327,3 +327,60 @@ export async function getAdminDashboard() {
     },
   };
 }
+
+
+/**
+ * Laporan penjualan dengan filter periode (tanggal bayar).
+ * Tanpa filter: semua order dihitung.
+ */
+export async function getSalesReport(from?: string, to?: string) {
+  const start = from ? new Date(`${from}T00:00:00`) : null;
+  const end = to ? new Date(`${to}T23:59:59`) : null;
+
+  const paidAtFilter =
+    start || end
+      ? { paidAt: { ...(start ? { gte: start } : {}), ...(end ? { lte: end } : {}) } }
+      : {};
+
+  const orders = await prisma.order.findMany({
+    where: { orderStatus: { in: ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"] }, ...paidAtFilter },
+    include: { tickets: true, items: { include: { category: true } }, event: true },
+  });
+
+  type Agg = { event: string; category: string; price: number; sold: number; quota: number; revenue: number };
+  const map = new Map<string, Agg>();
+
+  for (const o of orders) {
+    for (const t of o.tickets) {
+      if (t.ticketStatus === "CANCELLED") continue;
+      const item = o.items.find((i) => i.id === t.orderItemId);
+      const cat = item?.category;
+      if (!cat) continue;
+      const key = `${o.event.eventName}|${cat.categoryName}`;
+      const row = map.get(key) ?? {
+        event: o.event.eventName,
+        category: cat.categoryName,
+        price: item.unitPrice,
+        sold: 0,
+        quota: cat.quota,
+        revenue: 0,
+      };
+      row.sold += 1;
+      row.revenue += item.unitPrice;
+      map.set(key, row);
+    }
+  }
+
+  const rows = [...map.values()].sort((a, b) => b.revenue - a.revenue);
+  const label = start || end ? `${from || "awal"} – ${to || "akhir"}` : "semua waktu";
+
+  return {
+    rows,
+    total: rows.reduce((s, r) => s + r.revenue, 0),
+    orders: {
+      paid: orders.length,
+      tickets: orders.reduce((s, o) => s + o.tickets.filter((t) => t.ticketStatus !== "CANCELLED").length, 0),
+    },
+    period: { from: from ?? null, to: to ?? null, label },
+  };
+}

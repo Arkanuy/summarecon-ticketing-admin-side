@@ -466,6 +466,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 
 
+.tier-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 10px; align-items: end; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card-raised); margin-bottom: 8px; }
+.tier-form .field { margin: 0; }
+.tier-check { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.tier-check input { width: 16px; height: 16px; }
+@media (max-width: 900px) { .tier-form { grid-template-columns: 1fr; } }
+
 /* ---------- dark tweaks ---------- */
 
 :root[data-theme="dark"] .table th { background: rgba(58,34,41,.5); }

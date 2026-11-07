@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { Badge, VersionBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { requireAdminPage } from "@/lib/auth/page";
-import { getAdminEvent, getAdminOrders } from "@/lib/data/admin-db";
+import { getAdminEvent } from "@/lib/data/admin-db";
+import { TicketPanel } from "@/components/event/TicketPanel";
+import { PriceTiers } from "@/components/event/PriceTiers";
 import { prisma } from "@/lib/db";
 import { EVENT_STATUS_LABEL, rupiah } from "@/lib/utils";
 
@@ -26,11 +28,34 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     orderBy: { sectionName: "asc" },
   });
   const seatStats = await prisma.eventSeat.groupBy({ by: ["status"], where: { eventId: id }, _count: true });
-  const tickets = await prisma.ticket.findMany({
+  const [tickets, attendance, priceTiers] = await Promise.all([
+    prisma.ticket.findMany({
+      where: { eventId: id },
+      orderBy: [{ attendeeSequence: "asc" }],
+      take: 100,
+      include: { seat: true, section: true, orderItem: { include: { category: true } } },
+    }),
+    prisma.ticket.groupBy({ by: ["attendanceStatus", "ticketStatus"], where: { eventId: id }, _count: true }),
+    prisma.ticketPriceTier.findMany({
+      where: { category: { eventId: id } },
+      orderBy: { startsAt: "asc" },
+    }),
+  ]);
+
+  const sudah = attendance.filter((a) => a.attendanceStatus === "CHECKED_IN").reduce((s, a) => s + a._count, 0);
+  const belum = attendance.filter((a) => a.ticketStatus === "ISSUED").reduce((s, a) => s + a._count, 0);
+  const qrAgg = await prisma.eTicket.aggregate({
     where: { eventId: id },
-    orderBy: { issuedAt: "asc" },
-    take: 50,
+    _sum: { validTicketCount: true, successfulScanCount: true },
+    _count: true,
   });
+  const summary = {
+    sudah_check_in: sudah,
+    belum_check_in: belum,
+    qr_issued: qrAgg._count,
+    scans_used: qrAgg._sum.successfulScanCount ?? 0,
+    scan_quota: qrAgg._sum.validTicketCount ?? 0,
+  };
 
   return (
     <>
@@ -117,29 +142,49 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </table>
       </Card>
 
-      <div className="section-head"><h2 className="section-title">Tiket terbaru</h2></div>
-      <Card flush>
-        <table className="table">
-          <thead>
-            <tr><th>Tiket</th><th>Peserta</th><th>Order</th><th>Status</th><th>Check-in</th></tr>
-          </thead>
-          <tbody>
-            {tickets.length === 0 ? (
-              <tr><td colSpan={5} className="empty">Belum ada tiket terjual.</td></tr>
-            ) : (
-              tickets.map((t) => (
-                <tr key={t.id}>
-                  <td className="mono">{t.ticketCode}</td>
-                  <td>{t.participantName}</td>
-                  <td className="mono"><Link href={`/orders/${t.orderId}`} className="row-link">{t.orderId}</Link></td>
-                  <td>{t.ticketStatus}</td>
-                  <td>{t.attendanceStatus === "CHECKED_IN" ? "Sudah" : "Belum"}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="section-head"><h2 className="section-title">Harga bertingkat</h2></div>
+      <Card>
+        {event.categories.map((c) => (
+          <div key={c.id} style={{ paddingBottom: 14, marginBottom: 14, borderBottom: "1px solid var(--line)" }}>
+            <PriceTiers
+              categoryId={c.id}
+              categoryName={c.name}
+              basePrice={c.price}
+              initialTiers={priceTiers
+                .filter((t) => t.ticketCategoryId === c.id)
+                .map((t) => ({
+                  id: t.id,
+                  label: t.label,
+                  price: t.price,
+                  starts_at: t.startsAt.toISOString(),
+                  ends_at: t.endsAt.toISOString(),
+                  is_promo: t.isPromo,
+                  is_active: t.startsAt <= new Date() && new Date() <= t.endsAt,
+                }))}
+            />
+          </div>
+        ))}
       </Card>
+
+      <div className="section-head"><h2 className="section-title">Tiket & peserta</h2></div>
+      <TicketPanel
+        eventId={id}
+        summary={summary}
+        initial={{
+          total: tickets.length,
+          items: tickets.map((t) => ({
+            ticket_id: t.id,
+            ticket_code: t.ticketCode,
+            participant_name: t.participantName,
+            order_id: t.orderId,
+            seat: t.seat?.seatLabel ?? null,
+            section: t.section?.sectionName ?? null,
+            category: t.orderItem?.category?.categoryName ?? null,
+            ticket_status: t.ticketStatus,
+            attendance_status: t.attendanceStatus,
+          })),
+        }}
+      />
     </>
   );
 }

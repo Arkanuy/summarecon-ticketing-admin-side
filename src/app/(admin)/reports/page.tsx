@@ -1,37 +1,40 @@
 import { Card } from "@/components/ui/Card";
 import { requireAdminPage } from "@/lib/auth/page";
-import { getAdminEvents } from "@/lib/data/admin-db";
+import { ReportFilter } from "@/components/report/ReportFilter";
+import { getSalesReport } from "@/lib/data/admin-db";
 import { rupiah } from "@/lib/utils";
 
 export const instant = false;
 export const metadata = { title: "Laporan" };
 
-export default async function ReportsPage() {
+export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
   await requireAdminPage();
-  const events = await getAdminEvents();
-
-  const rows = events.flatMap((e) =>
-    e.categories.map((c) => ({
-      event: e.name,
-      category: c.name,
-      price: c.price,
-      sold: c.sold,
-      quota: c.quota,
-      revenue: c.sold * c.price,
-    })),
-  );
-  const total = rows.reduce((s, r) => s + r.revenue, 0);
+  const { from, to } = await searchParams;
+  const { rows, total, orders, period } = await getSalesReport(from, to);
 
   return (
     <>
       <div className="page-head">
         <div>
           <h1 className="page-title">Laporan</h1>
-          <p className="page-lead">Rekap penjualan per event dan kategori, dihitung dari database.</p>
+          <p className="page-lead">
+            Penjualan per event dan kategori. Filter periode memakai tanggal pembayaran order.
+          </p>
         </div>
       </div>
 
-      <Card flush>
+      <ReportFilter from={from ?? ""} to={to ?? ""} />
+
+      <div className="stats" style={{ marginTop: 14 }}>
+        <div className="stat stat-accent">
+          <b>{rupiah(total)}</b><span>Pendapatan periode</span>
+        </div>
+        <div className="stat"><b>{orders.paid}</b><span>Order terbayar</span></div>
+        <div className="stat"><b>{orders.tickets}</b><span>Tiket terjual</span></div>
+        <div className="stat"><b>{period.label}</b><span>Periode</span></div>
+      </div>
+
+      <Card flush style={{ marginTop: 16 }}>
         <table className="table">
           <thead>
             <tr>
@@ -41,7 +44,7 @@ export default async function ReportsPage() {
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={6} className="empty">Belum ada data penjualan.</td></tr>
+              <tr><td colSpan={6} className="empty">Tidak ada penjualan pada periode ini.</td></tr>
             ) : (
               rows.map((r) => (
                 <tr key={`${r.event}-${r.category}`}>
@@ -61,6 +64,10 @@ export default async function ReportsPage() {
           </tbody>
         </table>
       </Card>
+
+      <div className="note">
+        Angka dihitung dari order yang lunas pada rentang tanggal tersebut. Tanpa filter, semua order dihitung.
+      </div>
     </>
   );
 }

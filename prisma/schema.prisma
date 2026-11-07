@@ -214,6 +214,23 @@ model EventSection {
   @@map("event_sections")
 }
 
+/// Harga bertingkat: satu kategori bisa punya beberapa periode harga (normal/promo).
+model TicketPriceTier {
+  id               String   @id @map("tier_id")
+  ticketCategoryId String   @map("ticket_category_id")
+  label            String   // mis. "Early Bird", "Normal"
+  price            Int
+  startsAt         DateTime @map("starts_at")
+  endsAt           DateTime @map("ends_at")
+  isPromo          Boolean  @default(false) @map("is_promo")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  category TicketCategory @relation(fields: [ticketCategoryId], references: [id], onDelete: Cascade)
+
+  @@index([ticketCategoryId, startsAt])
+  @@map("ticket_price_tiers")
+}
+
 model TicketCategory {
   id              String   @id @map("ticket_category_id")
   eventId         String   @map("event_id")
@@ -229,6 +246,7 @@ model TicketCategory {
   event    Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
   sections EventSection[]
   orderItems OrderItem[]
+  priceTiers TicketPriceTier[]
 
   @@index([eventId])
   @@map("ticket_categories")
