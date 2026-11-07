@@ -16,7 +16,7 @@
   --accent: #f4a23b;
   --teal: #1f8f7e;
   --hold: #e9a12b;
-  --sold: #bdb3b8;
+  --sold: #6b5a6e;            /* SOLD: plum gelap + simbol ✕ (style guide revisi) */
   --error: #b3261e;
   --ok-text: #14695e;
   --hold-text: #805616;
@@ -29,9 +29,9 @@
   --hover-soft: rgba(253, 233, 228, .55);
   --seat-avail-bg: #e7f3ef;
   --seat-avail-ink: #14695e;
-  --seat-sold-a: #d4cdd0;
-  --seat-sold-b: #c4babe;
-  --seat-block-a: #f0dcd6;
+  --seat-sold-a: #6b5a6e;
+  --seat-sold-b: #5c4c5f;
+  --seat-block-a: #ddd5d9;   /* BLOCKED: arsiran abu */
   --seat-block-b: #ffffff;
   --line-strong: #e5b7aa;
   --line-soft: #f1d3ca;
@@ -51,7 +51,7 @@
   --accent: #f4a23b;
   --teal: #4cc2ae;
   --hold: #f2b84f;
-  --sold: #6a5d66;
+  --sold: #8b7a8f;
   --error: #ff8a80;
   --ok-text: #4cc2ae;
   --hold-text: #f2b84f;
@@ -182,7 +182,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .stat span { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .04em; }
 .stat-accent::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: linear-gradient(180deg,#d93a2f,#f4a23b); }
 .bar { height: 5px; border-radius: 99px; background: rgba(217,58,47,.12); overflow: hidden; margin-top: 8px; }
-.bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg,#d93a2f,#f4a23b); }
+.bar i { display: block; height: 100%; border-radius: 99px; background: var(--teal); }
+/* Style guide §2: <80% teal, 80-99% amber, 100% plum gelap */
+.bar-warn i { background: var(--hold); }
+.bar-full i { background: var(--sold); }
 
 /* ---------- tabel: inti admin panel ---------- */
 .table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
@@ -479,6 +482,104 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .method-post { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); color: var(--hold-text); }
 .method-patch { background: var(--soft-purple); color: var(--purple-dark); }
 .method-delete { background: color-mix(in srgb, var(--error) 14%, var(--surface)); color: var(--error); }
+
+/* ========== DENAH VENUE (blueprint) ==========
+   Posisi elemen datang dari layout_elements (persen), jadi kanvas ini
+   mengikuti susunan blueprint: panggung di atas, section di tengah,
+   sirkulasi & fasilitas di bawah. */
+.map-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 10px 0 12px; }
+.map-legend { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted-3); }
+.map-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.lg { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.lg-stage { background: var(--purple-dark); }
+.lg-section { background: color-mix(in srgb, var(--teal) 28%, var(--surface)); border: 1px solid var(--teal); }
+.lg-seat { background: var(--seat-avail-bg); border: 1px solid var(--teal); }
+.lg-sold { background: var(--sold); }
+.lg-blocked { background: repeating-linear-gradient(45deg, var(--seat-block-a), var(--seat-block-a) 2px, var(--surface) 2px, var(--surface) 4px); border: 1px solid var(--line-strong); }
+.lg-tenant { background: var(--line); }
+
+.venue-canvas { min-height: 520px;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 42%),
+    var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(140, 31, 43, .10);
+}
+
+.map-el {
+  position: absolute;
+  border-radius: 10px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid transparent;
+  font-size: 10px;
+  line-height: 1.2;
+  min-height: 0;
+}
+.el-section { overflow: visible; z-index: 1; justify-content: flex-start; padding-top: 3px; }
+.el-section .map-el-name { position: absolute; top: 2px; left: 0; right: 0; }
+.map-el > * { max-width: 100%; }
+.map-el-name { font-weight: 700; font-size: 10px; letter-spacing: .01em; text-align: center; }
+.map-el-tag { font-size: 8.5px; text-transform: uppercase; letter-spacing: .12em; opacity: .8; }
+.map-el-meta { font-size: 9px; opacity: .85; text-align: center; }
+.map-el-note { font-size: 8px; opacity: .7; text-align: center; }
+
+/* Panggung: gradasi tanda tangan (style guide §2) */
+.el-stage { background: linear-gradient(135deg, #d93a2f 0%, #ee6a35 60%, #f4a23b 100%); color: #fff; box-shadow: 0 4px 14px rgba(217, 58, 47, .28); }
+.el-stage .map-el-tag { color: #fff3ee; }
+.el-backstage { background: color-mix(in srgb, var(--sold) 22%, var(--surface)); color: var(--muted); border-color: var(--line-strong); }
+.el-section { background: color-mix(in srgb, var(--seat-avail-bg) 70%, var(--surface)); border-color: color-mix(in srgb, var(--teal) 45%, var(--line)); color: var(--ink); }
+.el-tenant { background: repeating-linear-gradient(135deg, var(--line-soft), var(--line-soft) 5px, var(--surface) 5px, var(--surface) 10px); color: var(--muted-3); }
+.el-aisle { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px dashed var(--line-strong); color: var(--muted-3); }
+.el-emergency { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); border: 1px dashed var(--accent); color: var(--hold-text); }
+.el-access, .el-foh, .el-checkin { background: color-mix(in srgb, var(--teal) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--teal) 40%, var(--line)); color: var(--ok-text); }
+.el-entry { background: color-mix(in srgb, var(--teal) 16%, var(--surface)); border: 1px solid var(--teal); color: var(--ok-text); }
+.el-exit { background: color-mix(in srgb, var(--purple) 10%, var(--surface)); border: 1px solid var(--line-strong); color: var(--purple-dark); }
+.el-other { background: var(--surface); border: 1px dashed var(--line-strong); color: var(--muted-3); }
+
+/* kursi di dalam section */
+/* Grid kursi mengambil seluruh tinggi section; label elemen diberi ruang sendiri
+   supaya baris kursi tidak pernah terpotong. */
+.map-seatgrid {
+  position: absolute; inset: 16px 2px 2px 2px;
+  display: flex; flex-direction: column; gap: 2px;
+  align-items: center; justify-content: center;
+}
+.map-seatrow { display: flex; gap: 2px; align-items: center; justify-content: center; flex-wrap: nowrap; flex: 0 0 auto; }
+.map-seat {
+  appearance: none; border: 1px solid var(--teal); border-radius: 4px 4px 2px 2px;
+  background: var(--seat-avail-bg); color: var(--seat-avail-ink);
+  width: 13px; height: 11px; flex: 0 0 auto;
+  font-size: 7px; font-weight: 700; padding: 0; cursor: pointer; position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.map-seat:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(31, 143, 126, .25); }
+.map-seat:focus-visible { outline: 2px solid var(--purple); outline-offset: 1px; }
+.ms-hold { background: color-mix(in srgb, var(--hold) 30%, var(--surface)); border-color: var(--hold); color: var(--hold-text); }
+.ms-hold::after { content: "⋯"; position: absolute; }
+.ms-sold { background: var(--seat-sold-a); border-color: var(--seat-sold-b); color: #fff; cursor: not-allowed; }
+.ms-sold::after { content: "✕"; font-size: 7px; }
+.ms-blocked {
+  background: repeating-linear-gradient(45deg, var(--seat-block-a), var(--seat-block-a) 2px, var(--surface) 2px, var(--surface) 4px);
+  border-color: var(--line-strong); color: var(--muted-3); cursor: pointer;
+}
+.ms-sel { background: var(--purple) !important; border-color: var(--purple-dark) !important; color: #fff !important; transform: scale(1.08); box-shadow: 0 0 0 2px color-mix(in srgb, var(--purple) 30%, transparent); }
+.ms-sel::after { content: "✓"; }
+
+@media (prefers-reduced-motion: reduce) {
+  .map-seat { transition: none; }
+  .map-seat:hover:not(:disabled) { transform: none; }
+}
 
 /* ---------- dark tweaks ---------- */
 

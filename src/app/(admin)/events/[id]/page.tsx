@@ -6,12 +6,22 @@ import { requireAdminPage } from "@/lib/auth/page";
 import { getAdminEvent } from "@/lib/data/admin-db";
 import { TicketPanel } from "@/components/event/TicketPanel";
 import { PriceTiers } from "@/components/event/PriceTiers";
-import { SeatBlocking } from "@/components/seat-map/SeatBlocking";
+import { VenueMap } from "@/components/seat-map/VenueMap";
 import { EventStatusActions } from "@/components/event/EventStatusActions";
 import { prisma } from "@/lib/db";
 import { EVENT_STATUS_LABEL, rupiah } from "@/lib/utils";
 
 export const instant = false;
+
+/** Status di DB bisa lebih kaya (mis. DISABLED_EVENT_CANCELLED); petakan ke 4 status yang dikenal denah. */
+function toSeatStatus(raw: string): "available" | "hold" | "sold" | "blocked" {
+  const s = raw.toUpperCase();
+  if (s === "AVAILABLE") return "available";
+  if (s === "SOLD" || s === "USED") return "sold";
+  if (s === "BLOCKED" || s.startsWith("DISABLED")) return "blocked";
+  if (s.startsWith("HOLD") || s === "RESERVED") return "hold";
+  return "blocked";
+}
 
 const MODE_LABEL: Record<string, string> = {
   BOOK_BY_SEAT: "Book by Seat",
@@ -30,6 +40,27 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     orderBy: { sectionName: "asc" },
   });
   const seatStats = await prisma.eventSeat.groupBy({ by: ["status"], where: { eventId: id }, _count: true });
+  /* Posisi elemen denah: dari layout template yang dipakai event ini. */
+  const template = await prisma.layoutTemplate.findUnique({
+    where: { id: (await prisma.event.findUnique({ where: { id }, select: { layoutTemplateId: true } }))?.layoutTemplateId ?? "" },
+    select: { layoutElements: true },
+  });
+  const layoutElements = (() => {
+    try {
+      return JSON.parse(template?.layoutElements ?? "[]") as {
+        element_id?: string;
+        name?: string;
+        element_type?: string;
+        ticketable?: boolean;
+        note?: string;
+        booking_type?: string;
+        position?: { x: number; y: number; width: number; height: number };
+      }[];
+    } catch {
+      return [];
+    }
+  })();
+
   const seats = await prisma.eventSeat.findMany({
     where: { eventId: id },
     orderBy: [{ sectionId: "asc" }, { rowLabel: "asc" }, { seatNumber: "asc" }],
@@ -92,52 +123,61 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         <div className="stat"><b>{rupiah(event.priceFrom)}</b><span>Harga mulai</span></div>
       </div>
 
-      <div className="section-head"><h2 className="section-title">Denah & status kursi</h2></div>
-      {sections.map((s) => {
-        /* event_seats.section_id menunjuk event_section_id, bukan section_id master */
-        const seatRows = seats.filter((x) => x.sectionId === s.id);
-        const byMode = s.bookingType === "BOOK_BY_SEAT";
-        const rowLabels = [...new Set(seatRows.map((x) => x.rowLabel ?? "?"))].sort();
-        /* Status di DB bisa lebih kaya (mis. DISABLED_EVENT_CANCELLED); petakan ke 4 status yang dikenal grid. */
-        const toSeatStatus = (raw: string): "available" | "hold" | "sold" | "blocked" => {
-          const s = raw.toUpperCase();
-          if (s === "AVAILABLE") return "available";
-          if (s === "SOLD" || s === "USED") return "sold";
-          if (s === "BLOCKED" || s.startsWith("DISABLED")) return "blocked";
-          if (s.startsWith("HOLD") || s === "RESERVED") return "hold";
-          return "blocked";
-        };
-        const seatMap = Object.fromEntries(
-          seatRows.map((x) => [`${x.rowLabel}-${x.seatNumber}`, toSeatStatus(x.status)]),
-        ) as Record<string, "available" | "hold" | "sold" | "blocked">;
-        const cols = seatRows.length ? Math.max(...seatRows.map((x) => Number(x.seatNumber) || 0)) : 0;
+      <div className="section-head"><h2 className="section-title">Denah venue</h2></div>
+      <VenueMap
+        eventId={id}
+        elements={layoutElements}
+        sections={sections.map((s) => ({
+          id: s.id,
+          name: s.sectionName,
+          bookingType: s.bookingType,
+          capacity: s.capacity,
+          sold: s.soldQuantity,
+          sectionId: s.sectionId,
+          sectionKey: `${s.sectionId} ${s.sectionName}`.toLowerCase(),
+        }))}
+        seats={seats.map((x) => ({
+          id: x.id,
+          sectionId: x.sectionId,
+          row: x.rowLabel ?? "?",
+          number: Number(x.seatNumber) || 0,
+          status: toSeatStatus(x.status),
+        }))}
+      />
 
-        return (
-          <Card key={s.id} style={{ marginBottom: 12 }}>
-            <div className="card-head" style={{ marginBottom: 8 }}>
-              <div>
-                <div className="t-name">{s.sectionName}</div>
-                <div className="sub">
-                  {MODE_LABEL[s.bookingType] ?? s.bookingType} · kapasitas {s.capacity} · terjual {s.soldQuantity}
-                </div>
-              </div>
-              <Badge tone={byMode ? "ok" : "muted"}>
-                {byMode ? "peserta pilih kursi" : s.bookingType === "STANDING" ? "berdiri, tanpa nomor" : "kuota, tanpa nomor"}
-              </Badge>
-            </div>
-
-            {byMode && seatRows.length ? (
-              <SeatBlocking eventId={id} seats={seatMap} rows={rowLabels} cols={cols} />
-            ) : (
-              <p className="sub">
-                {s.bookingType === "STANDING"
-                  ? "Area berdiri: peserta tidak memilih nomor kursi, hanya memilih kategori. Kuota dikurangi per tiket."
-                  : "Penjualan berbasis kuota: nomor kursi tidak dipilih peserta. Kuota dikurangi per tiket."}
-              </p>
-            )}
-          </Card>
-        );
-      })}
+      <div className="section-head"><h2 className="section-title">Section &amp; metode booking</h2></div>
+      <Card flush>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Section</th><th>Metode</th><th className="num">Kapasitas</th>
+              <th className="num">Terjual</th><th className="num">Sisa</th><th>Inventory</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sections.map((s) => {
+              const pct = s.capacity ? Math.round((s.soldQuantity / s.capacity) * 100) : 0;
+              return (
+                <tr key={s.id}>
+                  <td className="t-name">{s.sectionName}</td>
+                  <td>{MODE_LABEL[s.bookingType] ?? s.bookingType}</td>
+                  <td className="num mono">{s.capacity}</td>
+                  <td className="num mono">{s.soldQuantity}</td>
+                  <td className="num mono">{s.capacity - s.soldQuantity}</td>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span className={`bar${pct >= 100 ? " bar-full" : pct >= 80 ? " bar-warn" : ""}`} style={{ width: 80 }}>
+                        <i style={{ width: `${Math.min(pct, 100)}%` }} />
+                      </span>
+                      <span className="mono sub" style={{ fontSize: 11 }}>{s.soldQuantity}/{s.capacity}</span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
 
       <div className="section-head"><h2 className="section-title">Kategori tiket</h2></div>
       <Card flush>
