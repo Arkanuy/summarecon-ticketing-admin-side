@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "Summarecon — Order & Check-in",
-    "_postman_id": "5b1f7c2a-8f3d-4c1e-9a2b-summarecon-order",
-    "description": "Alur lengkap: login peserta -> lihat kursi -> buat order -> QR -> check-in. Semua langkah mengisi variabel otomatis, jadi tinggal Run.",
+    "name": "Summarecon — Order & Check-in (alur lengkap)",
+    "_postman_id": "a1c4e7f2-3b8d-4e5a-9c6d-summarecon-order",
+    "description": "Klik Run. Semua variabel terisi otomatis: kursi, order, QR, lalu scan sampai habis. Login login disimpan di cookie jar Postman, jadi jalankan sebagai satu rangkaian.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -44,7 +44,7 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('login peserta 200', () => pm.response.to.have.status(200));",
+              "pm.test('login 200', () => pm.response.to.have.status(200));",
               "pm.test('role CUSTOMER', () => pm.expect(pm.response.json().data.user.role).to.eql('CUSTOMER'));"
             ]
           }
@@ -76,25 +76,25 @@
       }
     },
     {
-      "name": "2. Lihat kursi (ambil 2 yang tersedia)",
+      "name": "2. Ambil 2 kursi tersedia",
       "event": [
         {
           "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "const seats = pm.response.json().data;",
-              "const free = seats.filter(s => s.status === 'AVAILABLE');",
-              "pm.test('ada kursi tersedia', () => pm.expect(free.length).to.be.above(1));",
+              "const free = pm.response.json().data.filter(s => s.status === 'AVAILABLE');",
+              "pm.test('ada >= 2 kursi', () => pm.expect(free.length).to.be.above(1));",
               "pm.collectionVariables.set('seatA', free[0].event_seat_id);",
               "pm.collectionVariables.set('seatB', free[1].event_seat_id);",
-              "console.log('kursi dipilih:', free[0].seat_label, free[1].seat_label);"
+              "console.log('dipakai:', free[0].seat_label, free[1].seat_label);"
             ]
           }
         }
       ],
       "request": {
         "method": "GET",
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/events/{{eventId}}/seats",
           "host": [
@@ -110,20 +110,20 @@
       }
     },
     {
-      "name": "3. Buat order (bayar simulasi)",
+      "name": "3. Buat order (PAID + QR)",
       "event": [
         {
           "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('order dibuat 201', () => pm.response.to.have.status(201));",
+              "pm.test('201 dibuat', () => pm.response.to.have.status(201));",
               "const d = pm.response.json().data;",
-              "pm.test('QR terbit', () => pm.expect(d.qr_token).to.be.a('string'));",
+              "pm.test('qr_token ada', () => pm.expect(d.qr_token).to.be.a('string'));",
               "pm.collectionVariables.set('orderId', d.order_id);",
               "pm.collectionVariables.set('orderCode', d.order_code);",
               "pm.collectionVariables.set('qrToken', d.qr_token);",
-              "console.log('order:', d.order_code, '| tiket:', d.tickets, '| total:', d.total_amount);"
+              "console.log('order', d.order_code, '| tiket', d.tickets, '| total', d.total_amount);"
             ]
           }
         }
@@ -153,7 +153,7 @@
       }
     },
     {
-      "name": "4. Coba pesan kursi yang sama (harus 409)",
+      "name": "4. Kursi sama dipesan lagi -> 409",
       "event": [
         {
           "listen": "test",
@@ -161,7 +161,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('ditolak 409', () => pm.response.to.have.status(409));",
-              "pm.test('alasan KURSI_SUDAH_DIAMBIL', () => pm.expect(pm.response.json().error.code).to.eql('KURSI_SUDAH_DIAMBIL'));"
+              "pm.test('KURSI_SUDAH_DIAMBIL', () => pm.expect(pm.response.json().error.code).to.eql('KURSI_SUDAH_DIAMBIL'));"
             ]
           }
         }
@@ -199,15 +199,16 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('png 200', () => pm.response.to.have.status(200));",
-              "pm.test('content-type image', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('image/png'));"
+              "pm.test('image/png', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('image/png'));"
             ]
           }
         }
       ],
       "request": {
         "method": "GET",
+        "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/customer/orders/{{orderId}}/qr?format=png",
+          "raw": "{{baseUrl}}/api/customer/orders/{{orderId}}/qr",
           "host": [
             "{{baseUrl}}"
           ],
@@ -228,45 +229,15 @@
       }
     },
     {
-      "name": "6. Admin: order masuk?",
+      "name": "6. Scan tiket 1 (check-in)",
       "event": [
         {
           "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('admin 200', () => pm.response.to.have.status(200));",
-              "const items = pm.response.json().data.items;",
-              "const code = pm.collectionVariables.get('orderCode');",
-              "pm.test('order ada di daftar admin', () => pm.expect(items.map(i=>i.order_code)).to.include(code));"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "url": {
-          "raw": "{{baseUrl}}/api/bookings",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "bookings"
-          ]
-        }
-      }
-    },
-    {
-      "name": "7. Scan QR (check-in)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('scan diterima', () => pm.response.code === 200 || pm.response.code === 409);",
-              "console.log('hasil scan:', pm.response.text());"
+              "pm.test('200 VALID', () => pm.response.to.have.status(200));",
+              "pm.test('scan 1/2', () => pm.expect(pm.response.json().data.scan).to.eql('1/2'));"
             ]
           }
         }
@@ -297,6 +268,161 @@
         "body": {
           "mode": "raw",
           "raw": "{\n  \"qr_token_hash\": \"{{qrToken}}\",\n  \"event_id\": \"{{eventId}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "7. Scan tiket 2 (check-in)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 VALID', () => pm.response.to.have.status(200));",
+              "pm.test('scan 2/2', () => pm.expect(pm.response.json().data.scan).to.eql('2/2'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-scan-code",
+            "value": "SCAN-2026"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/checkin/public",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "checkin",
+            "public"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"qr_token_hash\": \"{{qrToken}}\",\n  \"event_id\": \"{{eventId}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "8. Scan ke-3 -> 409 (bukan 500)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('409 BATAS_SCAN', () => pm.response.to.have.status(409));",
+              "pm.test('alasan BATAS_SCAN', () => pm.expect(pm.response.json().error.code).to.eql('BATAS_SCAN'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-scan-code",
+            "value": "SCAN-2026"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/checkin/public",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "checkin",
+            "public"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"qr_token_hash\": \"{{qrToken}}\",\n  \"event_id\": \"{{eventId}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "9. Login admin",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('login admin 200', () => pm.response.to.have.status(200));",
+              "pm.test('role ADMIN', () => pm.expect(pm.response.json().data.user.role).to.eql('ADMIN'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin.demo@example.test\",\n  \"password\": \"Summarecon2026!\",\n  \"audience\": \"ADMIN\"\n}"
+        }
+      }
+    },
+    {
+      "name": "10. Order muncul di admin",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "const codes = pm.response.json().data.items.map(i => i.order_code);",
+              "pm.test('order ada di admin', () => pm.expect(codes).to.include(pm.collectionVariables.get('orderCode')));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/bookings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "bookings"
+          ]
         }
       }
     }
