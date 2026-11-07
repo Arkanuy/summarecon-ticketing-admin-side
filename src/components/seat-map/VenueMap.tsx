@@ -185,14 +185,18 @@ export function VenueMap({
               className={`map-el ${style.cls}`}
               style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${p.width}%`, height: `${p.height}%` }}
             >
-              <span className="map-el-name">{el.name}</span>
+              {showSeats && section ? <span className="map-el-label">{el.name}</span> : <span className="map-el-name">{el.name}</span>}
 
               {showSeats && section ? (
-                <div className="map-seatgrid">
+                <div
+                  className="map-seatgrid"
+                  style={{ ["--cols" as string]: String(Math.max(...sectionSeats.map((s) => s.number), 1)) }}
+                >
                   {(() => {
                     const rows = seatLayout(sectionSeats);
                     return rows.map((row) => (
                       <div key={`${section.id}:${row}`} className="map-seatrow">
+                        <span className="map-rowlabel">{row}</span>
                         {sectionSeats
                           .filter((s) => s.row === row)
                           .sort((a, b) => a.number - b.number)
@@ -210,7 +214,7 @@ export function VenueMap({
                                 disabled={!selectable(st)}
                                 onClick={() => toggle(s.id)}
                               >
-                                {s.number}
+                                <span className="ms-num">{s.number}</span>
                               </button>
                             );
                           })}
