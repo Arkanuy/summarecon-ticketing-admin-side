@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+/** CORS ditangani src/middleware.ts supaya Origin yang diizinkan bisa dipantulkan. */
 const nextConfig: NextConfig = {
   experimental: {
     agentFeedback: true,
