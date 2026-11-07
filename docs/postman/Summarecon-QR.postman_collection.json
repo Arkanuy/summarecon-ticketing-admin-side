@@ -1,0 +1,187 @@
+{
+  "info": {
+    "name": "Summarecon Ticketing — QR Ticket",
+    "description": "Buat QR e-ticket dari sisi customer, lalu pindai sebagai petugas.\n\nAlur:\n1. Login Customer → simpan cookie\n2. Daftar order → pilih order PAID\n3. Ambil QR (JSON / PNG)\n4. (opsional) Scan sebagai petugas",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://summarecon-admin.axtra.tech/api" },
+    { "key": "scanUrl", "value": "https://summarecon-scan.axtra.tech/api" },
+    { "key": "scanCode", "value": "SCAN-2026" },
+    { "key": "customerEmail", "value": "nadia.demo@example.test" },
+    { "key": "customerPassword", "value": "Summarecon2026!" },
+    { "key": "orderId", "value": "ORD-QRREAL-1" },
+    { "key": "eventId", "value": "EVT-ATR-001" }
+  ],
+  "item": [
+    {
+      "name": "1. Login Customer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('login berhasil', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('role customer', () => pm.expect(body.data.user.role).to.eql('CUSTOMER'));",
+              "// Postman menyimpan cookie otomatis; tidak perlu menyimpan token manual."
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\",\n  \"audience\": \"CUSTOMER\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+      }
+    },
+    {
+      "name": "2. Daftar Order Saya",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('daftar order terbaca', () => pm.response.to.have.status(200));",
+              "const items = pm.response.json().data || [];",
+              "const paid = items.find(o => o.order_status === 'PAID');",
+              "if (paid) {",
+              "  pm.collectionVariables.set('orderId', paid.order_id);",
+              "  pm.test('order PAID ditemukan: ' + paid.order_code, () => pm.expect(paid.order_status).to.eql('PAID'));",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/customer/orders", "host": ["{{baseUrl}}"], "path": ["customer", "orders"] }
+      }
+    },
+    {
+      "name": "3a. Ambil QR — JSON (token + data_url)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('QR terbit', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json().data;",
+              "pm.test('token bertanda tangan (TKT.)', () => pm.expect(d.token.startsWith('TKT.')).to.be.true);",
+              "pm.test('token punya 4 segmen', () => pm.expect(d.token.split('.')).to.have.lengthOf(4));",
+              "pm.test('data_url berupa PNG base64', () => pm.expect(d.data_url.startsWith('data:image/png;base64,')).to.be.true);",
+              "pm.collectionVariables.set('qrToken', d.token);",
+              "console.log('TOKEN:', d.token);",
+              "console.log('SISA SCAN:', d.remaining + '/' + d.valid_ticket_count);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/customer/orders/{{orderId}}/qr",
+          "host": ["{{baseUrl}}"],
+          "path": ["customer", "orders", "{{orderId}}", "qr"]
+        }
+      }
+    },
+    {
+      "name": "3b. Ambil QR — PNG (gambar siap cetak)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('respons PNG', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('image/png'));",
+              "pm.test('ukuran wajar', () => pm.expect(pm.response.responseSize).to.be.above(1000));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "image/png" }],
+        "url": {
+          "raw": "{{baseUrl}}/customer/orders/{{orderId}}/qr?format=png",
+          "host": ["{{baseUrl}}"],
+          "path": ["customer", "orders", "{{orderId}}", "qr"],
+          "query": [{ "key": "format", "value": "png" }]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Scan QR (petugas, tanpa login admin)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const ok = pm.response.code === 200;",
+              "const body = pm.response.json();",
+              "if (ok) {",
+              "  pm.test('scan valid', () => pm.expect(body.data.result).to.eql('VALID'));",
+              "  console.log('TIKET:', body.data.ticket.participant_name, '| scan', body.data.scan);",
+              "} else {",
+              "  pm.test('ditolak dengan alasan jelas', () => pm.expect([409, 422]).to.include(pm.response.code));",
+              "  console.log('DITOLAK:', body.error.code, '-', body.error.message);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-scan-code", "value": "{{scanCode}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"qr_token_hash\": \"{{qrToken}}\",\n  \"event_id\": \"{{eventId}}\",\n  \"device_id\": \"POSTMAN-TEST\"\n}"
+        },
+        "url": { "raw": "{{scanUrl}}/checkin/public", "host": ["{{scanUrl}}"], "path": ["checkin", "public"] }
+      }
+    },
+    {
+      "name": "5. Cek QR yang tidak sah (harus 422)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('QR palsu ditolak', () => pm.response.to.have.status(422));",
+              "const e = pm.response.json().error;",
+              "pm.test('alasan: QR_TIDAK_SAH', () => pm.expect(e.code).to.eql('QR_TIDAK_SAH'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-scan-code", "value": "{{scanCode}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"qr_token_hash\": \"TKT.PALSU-0001.aaaaaaaaaaaaaaaaaaaaaaaa.AAAAtanda-tangan-palsuAAAA\",\n  \"event_id\": \"{{eventId}}\"\n}"
+        },
+        "url": { "raw": "{{scanUrl}}/checkin/public", "host": ["{{scanUrl}}"], "path": ["checkin", "public"] }
+      }
+    }
+  ]
+}

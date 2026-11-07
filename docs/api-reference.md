@@ -391,6 +391,17 @@ Mengganti `QR_SIGNING_SECRET` membuat **semua QR yang sudah dicetak tidak sah**.
 
 ---
 
+## 10b. Postman
+
+Collection siap import: [`docs/postman/Summarecon-QR.postman_collection.json`](./postman/Summarecon-QR.postman_collection.json)
+Panduan langkah demi langkah: [`docs/postman-qr-guide.md`](./postman-qr-guide.md)
+
+Import → Run collection. Sudah diuji: 6 request, 13 assertion, 0 gagal.
+
+Alur di dalamnya: login customer → daftar order → ambil QR (JSON & PNG) → scan sebagai petugas → uji token palsu (harus 422).
+
+---
+
 ## 11. Akun demo
 
 Password semua: `Summarecon2026!`
