@@ -266,6 +266,25 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .seat-sum { margin: 12px 0 0; text-align: center; font-family: "Plus Jakarta Sans", sans-serif; font-size: 12px; font-weight: 700; }
 .seat-note { margin: 6px 0 0; text-align: center; color: var(--muted); font-size: 11px; }
 
+/* ---------- halaman scan mandiri (petugas) ---------- */
+.scan-root { min-height: 100vh; background: var(--paper); }
+.scan-shell { width: 100%; max-width: 520px; margin-inline: auto; padding: 14px 14px 28px; display: flex; flex-direction: column; gap: 12px; }
+.scan-card { margin-top: 8vh; padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 6px 24px rgba(140,31,43,.1); }
+.scan-title { margin: 8px 0 6px; font-size: 24px; font-weight: 800; letter-spacing: -.03em; }
+.scan-topbar { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card-raised); }
+.scan-brand { font-family: "Plus Jakarta Sans", sans-serif; font-size: 12px; font-weight: 800; letter-spacing: -.01em; }
+.scan-event-name { color: var(--muted); font-size: 11px; }
+.scan-select { max-width: 190px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 11px; }
+.scan-stage { max-width: none; border-radius: 18px; }
+.scan-result { margin-top: 0; }
+.scan-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.scan-log li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 12px; animation: rise-in .2s ease-out both; }
+.scan-log li b { font-family: "Plus Jakarta Sans", sans-serif; font-size: 12.5px; }
+.scan-log li .mono { color: var(--muted); font-size: 10.5px; }
+.scan-log-scan { color: var(--ok-text); font-weight: 700; font-size: 11px; }
+.scan-log li .sub { grid-column: 1 / -1; font-size: 10px; }
+.scan-exit { align-self: center; margin-top: 6px; padding: 8px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--muted-2); font-size: 11px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
 /* ---------- pemindai QR kamera ---------- */
 .scanner { display: flex; flex-direction: column; gap: 4px; }
 .scanner-stage {
