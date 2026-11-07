@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession, roleAudience } from "@/lib/auth/session";
+import { releaseExpiredHolds } from "@/lib/holds";
 import { issueQrToken } from "@/lib/qr/token";
 
 /**
@@ -102,6 +103,9 @@ export async function POST(request: Request) {
   const attendeeName = String(body.attendee_name ?? session.name ?? "Peserta").trim();
   const attendees: string[] = Array.isArray(body.attendees) ? body.attendees.map(String) : [];
   const simulatePayment = body.simulate_payment === true;
+
+  /* Kursi tahanan yang sudah lewat waktu dilepas dulu, kalau tidak order selalu 409. */
+  await releaseExpiredHolds(eventId).catch(() => 0);
 
   try {
     const result = await prisma.$transaction(async (tx) => {

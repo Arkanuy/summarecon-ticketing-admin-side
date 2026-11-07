@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { releaseExpiredHolds } from "@/lib/holds";
 import { ok, notFound, parseJsonSafe } from "@/lib/api";
 
 /** GET /api/events/:id/seats?status=&section_id= — denah kursi untuk BOOK_BY_SEAT. */
@@ -10,6 +11,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } });
   if (!event) return notFound("Event");
+
+  /* Kursi yang hold-nya sudah lewat waktu harus tampil AVAILABLE lagi,
+     bukan LOCKED selamanya. */
+  await releaseExpiredHolds(eventId).catch(() => 0);
 
   const seats = await prisma.eventSeat.findMany({
     where: { eventId, ...(status ? { status } : {}), ...(sectionId ? { sectionId } : {}) },

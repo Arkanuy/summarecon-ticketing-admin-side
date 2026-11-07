@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { ok, fail, badRequest } from "@/lib/api";
 import { requireAdmin, requireCustomer } from "@/lib/auth/guard";
+import { releaseExpiredHolds } from "@/lib/holds";
 
 /**
  * POST /api/events/:id/holds — kunci kursi 10 menit.
@@ -17,6 +18,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id: eventId } = await params;
   const body = await request.json().catch(() => null);
   const seatIds: string[] = Array.isArray(body?.event_seat_ids) ? body.event_seat_ids : [];
+
+  /* Bersihkan hold yang sudah kedaluwarsa supaya kursinya bisa diklaim lagi. */
+  await releaseExpiredHolds(eventId).catch(() => 0);
   /* user_id diambil dari sesi; body.user_id hanya untuk kompatibilitas klien lama. */
   const userId = (body?.user_id as string | undefined) ?? guard.user.userId;
 
