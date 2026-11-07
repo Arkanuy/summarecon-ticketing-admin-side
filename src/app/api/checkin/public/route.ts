@@ -26,15 +26,18 @@ export async function POST(request: Request) {
   const nextTicket = valid.filter((t) => t.ticketStatus === "ISSUED")[0];
 
   if (!nextTicket || used >= valid.length) {
+    /* Penolakan TIDAK boleh memakai nomor urut yang sama dengan scan berhasil:
+       unique(e_ticket_id, scan_sequence) akan menolak scan sah berikutnya.
+       Beri rentang terpisah (1000+) dan biarkan id unik per percobaan. */
     await prisma.checkinRecord
       .create({
         data: {
-          id: `CHK-${Date.now().toString(36).toUpperCase()}`,
+          id: `CHK-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6)}`,
           eTicketId: eTicket.id,
           orderId: eTicket.orderId,
           ticketId: null,
           eventId: eTicket.eventId,
-          scanSequence: used + 1,
+          scanSequence: 1000 + (await prisma.checkinRecord.count({ where: { eTicketId: eTicket.id, scanResult: "REJECTED_LIMIT" } })),
           scanResult: "REJECTED_LIMIT",
           scannedAt: new Date(),
           deviceId: body?.device_id ?? null,

@@ -1,0 +1,304 @@
+{
+  "info": {
+    "name": "Summarecon — Order & Check-in",
+    "_postman_id": "5b1f7c2a-8f3d-4c1e-9a2b-summarecon-order",
+    "description": "Alur lengkap: login peserta -> lihat kursi -> buat order -> QR -> check-in. Semua langkah mengisi variabel otomatis, jadi tinggal Run.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://summarecon-admin.axtra.tech"
+    },
+    {
+      "key": "eventId",
+      "value": "EVT-ATR-001"
+    },
+    {
+      "key": "seatA",
+      "value": ""
+    },
+    {
+      "key": "seatB",
+      "value": ""
+    },
+    {
+      "key": "orderId",
+      "value": ""
+    },
+    {
+      "key": "orderCode",
+      "value": ""
+    },
+    {
+      "key": "qrToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Login peserta",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('login peserta 200', () => pm.response.to.have.status(200));",
+              "pm.test('role CUSTOMER', () => pm.expect(pm.response.json().data.user.role).to.eql('CUSTOMER'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"nadia.demo@example.test\",\n  \"password\": \"Summarecon2026!\",\n  \"audience\": \"CUSTOMER\"\n}"
+        }
+      }
+    },
+    {
+      "name": "2. Lihat kursi (ambil 2 yang tersedia)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const seats = pm.response.json().data;",
+              "const free = seats.filter(s => s.status === 'AVAILABLE');",
+              "pm.test('ada kursi tersedia', () => pm.expect(free.length).to.be.above(1));",
+              "pm.collectionVariables.set('seatA', free[0].event_seat_id);",
+              "pm.collectionVariables.set('seatB', free[1].event_seat_id);",
+              "console.log('kursi dipilih:', free[0].seat_label, free[1].seat_label);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{eventId}}/seats",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{eventId}}",
+            "seats"
+          ]
+        }
+      }
+    },
+    {
+      "name": "3. Buat order (bayar simulasi)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('order dibuat 201', () => pm.response.to.have.status(201));",
+              "const d = pm.response.json().data;",
+              "pm.test('QR terbit', () => pm.expect(d.qr_token).to.be.a('string'));",
+              "pm.collectionVariables.set('orderId', d.order_id);",
+              "pm.collectionVariables.set('orderCode', d.order_code);",
+              "pm.collectionVariables.set('qrToken', d.qr_token);",
+              "console.log('order:', d.order_code, '| tiket:', d.tickets, '| total:', d.total_amount);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "orders"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"event_id\": \"{{eventId}}\",\n  \"seat_ids\": [\n    \"{{seatA}}\",\n    \"{{seatB}}\"\n  ],\n  \"attendee_name\": \"Uji Postman\",\n  \"simulate_payment\": true\n}"
+        }
+      }
+    },
+    {
+      "name": "4. Coba pesan kursi yang sama (harus 409)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('ditolak 409', () => pm.response.to.have.status(409));",
+              "pm.test('alasan KURSI_SUDAH_DIAMBIL', () => pm.expect(pm.response.json().error.code).to.eql('KURSI_SUDAH_DIAMBIL'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "orders"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"event_id\": \"{{eventId}}\",\n  \"seat_ids\": [\n    \"{{seatA}}\"\n  ],\n  \"attendee_name\": \"Penyusup\",\n  \"simulate_payment\": true\n}"
+        }
+      }
+    },
+    {
+      "name": "5. QR sebagai PNG",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('png 200', () => pm.response.to.have.status(200));",
+              "pm.test('content-type image', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('image/png'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/customer/orders/{{orderId}}/qr?format=png",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "customer",
+            "orders",
+            "{{orderId}}",
+            "qr"
+          ],
+          "query": [
+            {
+              "key": "format",
+              "value": "png"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "6. Admin: order masuk?",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('admin 200', () => pm.response.to.have.status(200));",
+              "const items = pm.response.json().data.items;",
+              "const code = pm.collectionVariables.get('orderCode');",
+              "pm.test('order ada di daftar admin', () => pm.expect(items.map(i=>i.order_code)).to.include(code));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/bookings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "bookings"
+          ]
+        }
+      }
+    },
+    {
+      "name": "7. Scan QR (check-in)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('scan diterima', () => pm.response.code === 200 || pm.response.code === 409);",
+              "console.log('hasil scan:', pm.response.text());"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-scan-code",
+            "value": "SCAN-2026"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/checkin/public",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "checkin",
+            "public"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"qr_token_hash\": \"{{qrToken}}\",\n  \"event_id\": \"{{eventId}}\"\n}"
+        }
+      }
+    }
+  ]
+}

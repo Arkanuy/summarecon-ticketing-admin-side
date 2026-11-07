@@ -31,16 +31,20 @@ export async function POST(request: Request) {
   const nextTicket = validTickets.find((t) => t.ticketStatus === "ISSUED");
 
   if (!nextTicket || used >= validTickets.length) {
-    const attempt = used + 1;
+    /* Rentang 1000+ dipakai khusus penolakan supaya tidak menabrak
+       unique(e_ticket_id, scan_sequence) milik scan yang berhasil. */
+    const rejectedCount = await prisma.checkinRecord.count({
+      where: { eTicketId: eTicket.id, scanResult: "REJECTED_LIMIT" },
+    });
     await prisma.checkinRecord
       .create({
         data: {
-          id: `CHK-${Date.now().toString(36).toUpperCase()}`,
+          id: `CHK-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6)}`,
           eTicketId: eTicket.id,
           orderId: eTicket.orderId,
           ticketId: null,
           eventId: eTicket.eventId,
-          scanSequence: attempt,
+          scanSequence: 1000 + rejectedCount,
           scanResult: "REJECTED_LIMIT",
           scannedAt: new Date(),
           checkedBy: body?.officer_user_id ?? null,

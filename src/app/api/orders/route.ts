@@ -251,7 +251,8 @@ export async function POST(request: Request) {
               attendeeSequence: ticketSeq,
               eventSectionId: line.sectionId,
               eventSeatId: line.seatId,
-              ticketStatus: simulatePayment ? "VALID" : "PENDING",
+              /* Skema check-in: ISSUED = terbit dan belum dipakai, USED = sudah masuk. */
+              ticketStatus: simulatePayment ? "ISSUED" : "PENDING",
               attendanceStatus: "BELUM_MASUK",
               issuedAt: now,
             },
