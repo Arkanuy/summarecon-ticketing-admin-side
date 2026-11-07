@@ -83,12 +83,43 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await request.json().catch(() => null);
-  if (!body || typeof body.published !== "boolean") {
-    return badRequest("Kirim JSON { published: true|false }");
+  const wantsStatus = typeof body?.event_status === "string" ? body.event_status.toUpperCase() : null;
+  if (typeof body?.published !== "boolean" && !wantsStatus) {
+    return badRequest("Kirim JSON { published: true|false } atau { event_status }");
   }
 
   const event = await prisma.event.findUnique({ where: { id } });
   if (!event) return notFound("Event");
+
+  /* Aktifkan ulang event yang dibatalkan: bersihkan jejak pembatalan. */
+  if (wantsStatus) {
+    const allowed = ["DRAFT", "PUBLISHED", "SALES_OPEN", "ONGOING", "COMPLETED", "CANCELLED"];
+    if (!allowed.includes(wantsStatus)) {
+      return badRequest(`event_status harus salah satu: ${allowed.join(", ")}`);
+    }
+    const updated = await prisma.event.update({
+      where: { id },
+      data: {
+        eventStatus: wantsStatus,
+        ...(wantsStatus !== "CANCELLED"
+          ? { cancelledAt: null, cancelledBy: null, cancelReason: null, publishedAt: event.publishedAt ?? new Date() }
+          : {}),
+      },
+    });
+
+    /* Kursi yang dimatikan karena pembatalan harus hidup lagi, kalau tidak
+       denah tetap kosong walau event sudah aktif kembali. */
+    let restoredSeats = 0;
+    if (wantsStatus !== "CANCELLED") {
+      const res = await prisma.eventSeat.updateMany({
+        where: { eventId: id, status: "DISABLED_EVENT_CANCELLED" },
+        data: { status: "AVAILABLE", statusSource: "EVENT_REACTIVATED" },
+      });
+      restoredSeats = res.count;
+    }
+
+    return ok({ event_id: updated.id, event_status: updated.eventStatus, restored_seats: restoredSeats });
+  }
 
   let next: string;
   if (body.published) {
