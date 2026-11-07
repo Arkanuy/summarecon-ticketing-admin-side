@@ -2,27 +2,17 @@ import Link from "next/link";
 import { EventRow } from "@/components/event/EventRow";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
-import { events, orders, refunds, tickets } from "@/lib/data/admin";
-import { ORDER_STATUS_LABEL, REFUND_STATUS_LABEL, rupiah, ticketSummary } from "@/lib/utils";
 import { requireAdminPage } from "@/lib/auth/page";
+import { getAdminDashboard } from "@/lib/data/admin-db";
+import { ORDER_STATUS_LABEL, REFUND_STATUS_LABEL, rupiah } from "@/lib/utils";
 
-/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
 export const instant = false;
-
 export const metadata = { title: "Dashboard" };
-
-const OPEN_REFUND = ["REQUESTED", "UNDER_REVIEW", "APPROVED", "PROCESSING", "NEED_CONFIRMATION"];
 
 export default async function DashboardPage() {
   await requireAdminPage();
-  const sold = events.reduce((s, e) => s + ticketSummary(e.categories).sold, 0);
-  const quota = events.reduce((s, e) => s + ticketSummary(e.categories).quota, 0);
-  const revenue = orders
-    .filter((o) => o.paymentStatus === "SUCCESS" || o.paymentStatus === "PARTIALLY_REFUNDED")
-    .reduce((s, o) => s + o.total, 0);
-  const checkedIn = tickets.filter((t) => t.attendance === "CHECKED_IN").length;
-  const openRefund = refunds.filter((r) => OPEN_REFUND.includes(r.status));
-  const recent = [...orders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
+  const { events, recentOrders, openRefunds, stats } = await getAdminDashboard();
+  const occupancy = stats.quota ? Math.round((stats.sold / stats.quota) * 100) : 0;
 
   return (
     <>
@@ -30,7 +20,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="page-title">Ringkasan hari ini</h1>
           <p className="page-lead">
-            {events.filter((e) => e.published).length} event publik · {sold} tiket terjual dari {quota} kuota.
+            {stats.published} event publik · {stats.sold} tiket terjual dari {stats.quota} kuota.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -41,20 +31,20 @@ export default async function DashboardPage() {
 
       <div className="stats">
         <div className="stat stat-accent">
-          <b>{sold.toLocaleString("id-ID")}</b>
+          <b>{stats.sold.toLocaleString("id-ID")}</b>
           <span>Tiket terjual</span>
-          <div className="bar"><i style={{ width: `${Math.round((sold / quota) * 100)}%` }} /></div>
+          <div className="bar"><i style={{ width: `${occupancy}%` }} /></div>
         </div>
         <div className="stat">
-          <b>{rupiah(revenue)}</b>
+          <b>{rupiah(stats.revenue)}</b>
           <span>Pendapatan</span>
         </div>
         <div className="stat">
-          <b>{checkedIn}</b>
+          <b>{stats.checkedIn}</b>
           <span>Check-in</span>
         </div>
         <div className="stat">
-          <b>{openRefund.length}</b>
+          <b>{stats.refundOpen}</b>
           <span>Refund menunggu</span>
         </div>
       </div>
@@ -63,7 +53,11 @@ export default async function DashboardPage() {
         <h2 className="section-title">Event</h2>
         <Link href="/events" className="back-link" style={{ margin: 0 }}>Kelola semua →</Link>
       </div>
-      {events.map((e) => <EventRow key={e.id} event={e} />)}
+      {events.length === 0 ? (
+        <Card><p className="sub">Belum ada event di database.</p></Card>
+      ) : (
+        events.map((e) => <EventRow key={e.id} event={e} />)
+      )}
 
       <div className="grid g2" style={{ marginTop: 22 }}>
         <div>
@@ -77,14 +71,18 @@ export default async function DashboardPage() {
                 <tr><th>Order</th><th>Pemesan</th><th>Status</th><th className="num">Total</th></tr>
               </thead>
               <tbody>
-                {recent.map((o) => (
-                  <tr key={o.id}>
-                    <td className="mono"><Link href={`/orders/${o.id}`}>{o.id}</Link></td>
-                    <td>{o.buyer}</td>
-                    <td><StatusBadge status={o.orderStatus} label={ORDER_STATUS_LABEL[o.orderStatus]} /></td>
-                    <td className="num mono">{rupiah(o.total)}</td>
-                  </tr>
-                ))}
+                {recentOrders.length === 0 ? (
+                  <tr><td colSpan={4} className="empty">Belum ada order.</td></tr>
+                ) : (
+                  recentOrders.map((o) => (
+                    <tr key={o.id}>
+                      <td className="mono"><Link href={`/orders/${o.id}`} className="row-link">{o.code}</Link></td>
+                      <td>{o.buyerName}</td>
+                      <td><StatusBadge status={o.orderStatus} label={ORDER_STATUS_LABEL[o.orderStatus as keyof typeof ORDER_STATUS_LABEL] ?? o.orderStatus} /></td>
+                      <td className="num mono">{rupiah(o.total)}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </Card>
@@ -101,13 +99,17 @@ export default async function DashboardPage() {
                 <tr><th>Refund</th><th>Status</th><th className="num">Nominal</th></tr>
               </thead>
               <tbody>
-                {openRefund.map((r) => (
-                  <tr key={r.id}>
-                    <td className="mono"><Link href={`/refunds/${r.id}`}>{r.id}</Link></td>
-                    <td><StatusBadge status={r.status} label={REFUND_STATUS_LABEL[r.status]} /></td>
-                    <td className="num mono">{rupiah(r.amount)}</td>
-                  </tr>
-                ))}
+                {openRefunds.length === 0 ? (
+                  <tr><td colSpan={3} className="empty">Tidak ada refund terbuka.</td></tr>
+                ) : (
+                  openRefunds.map((r) => (
+                    <tr key={r.id}>
+                      <td className="mono"><Link href={`/refunds/${r.id}`} className="row-link">{r.code}</Link></td>
+                      <td><StatusBadge status={r.status} label={REFUND_STATUS_LABEL[r.status as keyof typeof REFUND_STATUS_LABEL] ?? r.status} /></td>
+                      <td className="num mono">{rupiah(r.amount)}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </Card>

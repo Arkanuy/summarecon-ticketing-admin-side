@@ -1,28 +1,36 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Badge, VersionBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { Badge, StatusBadge, VersionBadge } from "@/components/ui/Badge";
-import { SeatBlocking } from "@/components/seat-map/SeatBlocking";
-import { events, orders, tickets } from "@/lib/data/admin";
-import { ATTENDANCE_LABEL, BOOKING_MODE_LABEL, EVENT_STATUS_LABEL, TICKET_STATUS_LABEL, rupiah } from "@/lib/utils";
 import { requireAdminPage } from "@/lib/auth/page";
+import { getAdminEvent, getAdminOrders } from "@/lib/data/admin-db";
+import { prisma } from "@/lib/db";
+import { EVENT_STATUS_LABEL, rupiah } from "@/lib/utils";
 
-/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
 export const instant = false;
 
-type PageProps = { params: Promise<{ id: string }> };
+const MODE_LABEL: Record<string, string> = {
+  BOOK_BY_SEAT: "Book by Seat",
+  BOOK_BY_QUOTA: "Book by Quota",
+  STANDING: "Standing",
+};
 
-export function generateStaticParams() {
-  return events.map(({ id }) => ({ id }));
-}
-
-export default async function EventDetailPage({ params }: PageProps) {
+export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage();
   const { id } = await params;
-  const event = events.find((e) => e.id === id);
+  const event = await getAdminEvent(id);
   if (!event) notFound();
 
-  const eventOrders = orders.filter((o) => o.eventId === event.id);
-  const eventTickets = tickets.filter((t) => eventOrders.some((o) => o.id === t.orderId));
+  const sections = await prisma.eventSection.findMany({
+    where: { eventId: id },
+    orderBy: { sectionName: "asc" },
+  });
+  const seatStats = await prisma.eventSeat.groupBy({ by: ["status"], where: { eventId: id }, _count: true });
+  const tickets = await prisma.ticket.findMany({
+    where: { eventId: id },
+    orderBy: { issuedAt: "asc" },
+    take: 50,
+  });
 
   return (
     <>
@@ -30,54 +38,48 @@ export default async function EventDetailPage({ params }: PageProps) {
 
       <div className="page-head">
         <div>
-          <span className="eyebrow">
-            <i className="eyebrow-line" />
-            {event.category} · {BOOKING_MODE_LABEL[event.bookingMode]}
-          </span>
+          <span className="eyebrow"><i className="eyebrow-line" />{event.code}</span>
           <h1 className="page-title" style={{ marginTop: 6 }}>{event.name}</h1>
-          <p className="page-lead">{event.date} · {event.time} · Summarecon Mall Bandung</p>
+          <p className="page-lead">
+            {event.venueName} · {event.startAt.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })} · {MODE_LABEL[event.bookingMode]}
+          </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <VersionBadge status={event.status} label={EVENT_STATUS_LABEL[event.status]} />
+          <VersionBadge status={event.status} label={EVENT_STATUS_LABEL[event.status as keyof typeof EVENT_STATUS_LABEL] ?? event.status} />
           <Badge tone={event.published ? "ok" : "muted"}>{event.published ? "Publik" : "Belum publik"}</Badge>
         </div>
       </div>
 
-      {event.bookingMode === "SEAT" && event.seats ? (
-        <SeatBlocking eventId={event.id} seats={event.seats} rows={event.seatRows ?? []} cols={event.seatCols ?? 0} />
-      ) : (
-        <div className="grid g2-even">
-          {event.categories.map((c) => {
-            const pct = Math.round((c.sold / c.quota) * 100);
-            return (
-              <Card key={c.id}>
-                <div className="card-head" style={{ marginBottom: 10 }}>
-                  <h3 className="section-title" style={{ fontSize: 17 }}>{c.name}</h3>
-                  <span className="mono">{c.sold}/{c.quota}</span>
-                </div>
-                <div className="bar"><i style={{ width: `${pct}%` }} /></div>
-                <p className="sub" style={{ marginTop: 8 }}>
-                  {pct}% terisi · sisa {c.quota - c.sold} · {rupiah(c.price)}
-                </p>
-              </Card>
-            );
-          })}
+      <div className="stats">
+        <div className="stat stat-accent">
+          <b>{event.sold}</b><span>Terjual</span>
+          <div className="bar"><i style={{ width: `${event.quota ? Math.round((event.sold / event.quota) * 100) : 0}%` }} /></div>
         </div>
-      )}
-
-      <div className="section-head">
-        <h2 className="section-title">Kategori tiket</h2>
+        <div className="stat"><b>{event.quota}</b><span>Kuota</span></div>
+        <div className="stat"><b>{event.capacity}</b><span>Kapasitas arena</span></div>
+        <div className="stat"><b>{rupiah(event.priceFrom)}</b><span>Harga mulai</span></div>
       </div>
+
+      {seatStats.length > 0 ? (
+        <>
+          <div className="section-head"><h2 className="section-title">Status kursi</h2></div>
+          <Card>
+            <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+              {seatStats.map((s) => (
+                <span key={s.status} className="sub">
+                  <b style={{ color: "var(--ink)" }}>{s._count}</b> {s.status.toLowerCase()}
+                </span>
+              ))}
+            </div>
+          </Card>
+        </>
+      ) : null}
+
+      <div className="section-head"><h2 className="section-title">Kategori tiket</h2></div>
       <Card flush>
         <table className="table">
           <thead>
-            <tr>
-              <th>Kategori</th>
-              <th className="num">Harga</th>
-              <th className="num">Kuota</th>
-              <th className="num">Terjual</th>
-              <th className="num">Sisa</th>
-            </tr>
+            <tr><th>Kategori</th><th className="num">Harga</th><th className="num">Kuota</th><th className="num">Terjual</th><th className="num">Sisa</th><th>Status</th></tr>
           </thead>
           <tbody>
             {event.categories.map((c) => (
@@ -87,39 +89,51 @@ export default async function EventDetailPage({ params }: PageProps) {
                 <td className="num mono">{c.quota}</td>
                 <td className="num mono">{c.sold}</td>
                 <td className="num mono">{c.quota - c.sold}</td>
+                <td>{c.status}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </Card>
 
-      <div className="section-head">
-        <h2 className="section-title">Peserta & tiket</h2>
-      </div>
+      <div className="section-head"><h2 className="section-title">Area / section</h2></div>
       <Card flush>
         <table className="table">
           <thead>
-            <tr>
-              <th>Tiket</th>
-              <th>Peserta</th>
-              <th>Order</th>
-              <th>Kursi</th>
-              <th>Status</th>
-              <th>Check-in</th>
-            </tr>
+            <tr><th>Section</th><th>Metode</th><th className="num">Kapasitas</th><th className="num">Terjual</th><th className="num">Sisa</th><th>Inventory</th></tr>
           </thead>
           <tbody>
-            {eventTickets.length === 0 ? (
-              <tr><td colSpan={6} className="empty">Belum ada tiket terjual.</td></tr>
+            {sections.map((s) => (
+              <tr key={s.id}>
+                <td className="t-name">{s.sectionName}</td>
+                <td>{MODE_LABEL[s.bookingType] ?? s.bookingType}</td>
+                <td className="num mono">{s.capacity}</td>
+                <td className="num mono">{s.soldQuantity}</td>
+                <td className="num mono">{s.availableQuantity}</td>
+                <td>{s.inventoryStatus}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+
+      <div className="section-head"><h2 className="section-title">Tiket terbaru</h2></div>
+      <Card flush>
+        <table className="table">
+          <thead>
+            <tr><th>Tiket</th><th>Peserta</th><th>Order</th><th>Status</th><th>Check-in</th></tr>
+          </thead>
+          <tbody>
+            {tickets.length === 0 ? (
+              <tr><td colSpan={5} className="empty">Belum ada tiket terjual.</td></tr>
             ) : (
-              eventTickets.map((t) => (
+              tickets.map((t) => (
                 <tr key={t.id}>
-                  <td className="mono">{t.id}</td>
-                  <td>{t.name}</td>
-                  <td className="mono"><Link href={`/orders/${t.orderId}`}>{t.orderId}</Link></td>
-                  <td className="mono">{t.seat ?? "—"}</td>
-                  <td><StatusBadge status={t.status} label={TICKET_STATUS_LABEL[t.status]} /></td>
-                  <td><StatusBadge status={t.attendance} label={ATTENDANCE_LABEL[t.attendance]} /></td>
+                  <td className="mono">{t.ticketCode}</td>
+                  <td>{t.participantName}</td>
+                  <td className="mono"><Link href={`/orders/${t.orderId}`} className="row-link">{t.orderId}</Link></td>
+                  <td>{t.ticketStatus}</td>
+                  <td>{t.attendanceStatus === "CHECKED_IN" ? "Sudah" : "Belum"}</td>
                 </tr>
               ))
             )}

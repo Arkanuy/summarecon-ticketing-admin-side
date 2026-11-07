@@ -1,35 +1,33 @@
 import Link from "next/link";
 import { VersionBadge } from "@/components/ui/Badge";
 import { PublishToggle } from "@/components/event/PublishToggle";
-import { EVENT_STATUS_LABEL, rupiah, ticketSummary } from "@/lib/utils";
-import type { AdminEvent } from "@/types/admin";
+import { EVENT_STATUS_LABEL, rupiah } from "@/lib/utils";
+import type { AdminEventRow } from "@/lib/data/admin-db";
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGS", "SEP", "OKT", "NOV", "DES"];
 
-/** Ringkasan event satu baris: cukup untuk memindai status, bukan kartu pemasaran. */
-export function EventRow({ event }: { event: AdminEvent }) {
-  const s = ticketSummary(event.categories);
-  const pct = s.quota ? Math.round((s.sold / s.quota) * 100) : 0;
-  const [, month, day] = event.date.split("-");
-  const from = Math.min(...event.categories.map((c) => c.price));
+/** Ringkasan event satu baris, datanya dari database. */
+export function EventRow({ event }: { event: AdminEventRow }) {
+  const pct = event.quota ? Math.round((event.sold / event.quota) * 100) : 0;
+  const start = event.startAt;
 
   return (
     <div className="event-row">
       <div className="date-chip">
-        <b>{Number(day)}</b>
-        <span>{MONTHS[Number(month) - 1]}</span>
+        <b>{start.getDate()}</b>
+        <span>{MONTHS[start.getMonth()]}</span>
       </div>
 
       <div style={{ minWidth: 0 }}>
         <Link href={`/events/${event.id}`} className="event-row-title">{event.name}</Link>
         <p className="event-row-meta">
-          {event.category} · {event.time} · mulai {rupiah(from)}
+          {event.venueName} · mulai {rupiah(event.priceFrom)}
         </p>
       </div>
 
       <div>
         <div className="mono" style={{ fontSize: 11.5 }}>
-          {s.sold}/{s.quota}
+          {event.sold}/{event.quota}
         </div>
         <div className="bar" style={{ marginTop: 5 }}>
           <i style={{ width: `${pct}%` }} />
@@ -37,7 +35,10 @@ export function EventRow({ event }: { event: AdminEvent }) {
       </div>
 
       <div>
-        <VersionBadge status={event.status} label={EVENT_STATUS_LABEL[event.status]} />
+        <VersionBadge
+          status={event.status}
+          label={EVENT_STATUS_LABEL[event.status as keyof typeof EVENT_STATUS_LABEL] ?? event.status}
+        />
       </div>
 
       <div className="event-row-side">

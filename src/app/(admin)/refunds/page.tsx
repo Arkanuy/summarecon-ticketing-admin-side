@@ -1,27 +1,26 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
-import { orders, refunds, tickets } from "@/lib/data/admin";
-import { REFUND_STATUS_LABEL, rupiah } from "@/lib/utils";
 import { requireAdminPage } from "@/lib/auth/page";
+import { getAdminRefunds } from "@/lib/data/admin-db";
+import { REFUND_STATUS_LABEL, rupiah } from "@/lib/utils";
 
-/* Halaman membaca sesi (runtime), jadi render-nya memblokir by design. */
 export const instant = false;
-
 export const metadata = { title: "Refund" };
 
 const GROUPS = ["REQUESTED", "UNDER_REVIEW", "APPROVED", "PROCESSING", "NEED_CONFIRMATION"] as const;
-const METHOD = { BANK: "Transfer bank", EWALLET: "E-wallet" } as const;
 
 export default async function RefundsPage() {
   await requireAdminPage();
+  const refunds = await getAdminRefunds();
+
   return (
     <>
       <div className="page-head">
         <div>
           <h1 className="page-title">Refund</h1>
           <p className="page-lead">
-            Dana dikirim manual di luar sistem; sistem hanya mencatat status dan riwayat (§6.4 no.9–10).
+            {refunds.length} pengajuan di database. Dana dikirim manual; sistem mencatat status (§6.4 no.9–10).
           </p>
         </div>
       </div>
@@ -49,46 +48,50 @@ export default async function RefundsPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Refund</th><th>Peserta</th><th>Order / Tiket</th><th className="num">Nominal</th>
-              <th>Sumber</th><th>Metode</th><th>Status</th><th />
+              <th>Refund</th><th>Peserta</th><th>Order</th><th className="num">Nominal</th>
+              <th>Sumber</th><th>Data</th><th>Status</th><th />
             </tr>
           </thead>
           <tbody>
-            {refunds.map((r) => {
-              const ticket = tickets.find((t) => t.id === r.ticketId);
-              const order = orders.find((o) => o.id === r.orderId);
-              return (
+            {refunds.length === 0 ? (
+              <tr><td colSpan={8} className="empty">Belum ada pengajuan refund.</td></tr>
+            ) : (
+              refunds.map((r) => (
                 <tr key={r.id}>
                   <td className="mono">
-                    <Link href={`/refunds/${r.id}`} className="row-link">{r.id}</Link>
+                    <Link href={`/refunds/${r.id}`} className="row-link">{r.code}</Link>
                   </td>
                   <td>
-                    <Link href={`/refunds/${r.id}`} className="t-name row-link">{ticket?.name ?? "—"}</Link>
-                    <div className="sub">{order?.buyer}</div>
+                    <Link href={`/refunds/${r.id}`} className="t-name row-link">{r.participant}</Link>
+                    <div className="sub">{r.buyerName}</div>
                   </td>
                   <td className="mono">
-                    {r.orderId}
-                    <div className="sub mono">{r.ticketId}</div>
+                    <Link href={`/orders/${r.orderId}`} className="row-link">{r.orderId}</Link>
                   </td>
                   <td className="num mono">{rupiah(r.amount)}</td>
-                  <td>{r.source === "EVENT_CANCELLED" ? "Pembatalan event" : "Pengajuan peserta"}</td>
+                  <td>{r.type === "EVENT_CANCELLATION" ? "Pembatalan event" : "Pengajuan peserta"}</td>
                   <td>
-                    {r.method ? (
+                    {r.destinationComplete ? (
                       <>
-                        {METHOD[r.method]}
-                        <div className="sub">{r.bank} · {r.accountNo}</div>
+                        {r.method === "BANK_TRANSFER" ? "Bank" : "E-wallet"}
+                        <div className="sub">{r.provider} · {r.accountNo}</div>
                       </>
                     ) : (
-                      <span className="muted">Belum diisi</span>
+                      <span className="muted">Belum lengkap</span>
                     )}
                   </td>
-                  <td><StatusBadge status={r.status} label={REFUND_STATUS_LABEL[r.status]} /></td>
+                  <td>
+                    <StatusBadge
+                      status={r.status}
+                      label={REFUND_STATUS_LABEL[r.status as keyof typeof REFUND_STATUS_LABEL] ?? r.status}
+                    />
+                  </td>
                   <td className="num">
                     <Link href={`/refunds/${r.id}`} className="button button-secondary button-small">Tangani</Link>
                   </td>
                 </tr>
-              );
-            })}
+              ))
+            )}
           </tbody>
         </table>
       </Card>
