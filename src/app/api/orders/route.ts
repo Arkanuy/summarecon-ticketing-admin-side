@@ -83,7 +83,37 @@ export async function POST(request: Request) {
   const knownSeats = candidateSeats.length
     ? await prisma.eventSeat.findMany({ where: { id: { in: candidateSeats } }, select: { id: true } })
     : [];
-  const seatIds: string[] = knownSeats.map((s) => s.id);
+  let seatIds: string[] = knownSeats.map((s) => s.id);
+
+  /*
+   * Repo customer side mengirim NOMOR URUT kursi (Number(s.number)), bukan event_seat_id,
+   * sehingga tidak ada yang cocok. Kalau daftar kosong tapi user ini punya hold aktif,
+   * pakai kursi dari hold-nya — itu memang kursi yang dia pilih.
+   */
+  const holdSeatIds = [...seatIds];
+  if (!seatIds.length) {
+    /* event_id dari klien bisa berupa angka yang tidak cocok dengan id mana pun
+       (Number("EVT-ATR-001") -> NaN -> 1). Dalam kasus itu ambil hold aktif milik
+       user ini tanpa memfilter event — hold hanya dibuat lewat API ini. */
+    const ownsEvent = await prisma.event.count({ where: { id: eventId } });
+    const activeHolds = await prisma.bookingHold.findMany({
+      where: {
+        userId: session.userId,
+        status: "ACTIVE",
+        reservedUntil: { gt: new Date() },
+        ...(ownsEvent ? { eventId } : {}),
+      },
+      select: { eventSeatIds: true },
+    });
+    for (const h of activeHolds) {
+      try {
+        holdSeatIds.push(...(JSON.parse(h.eventSeatIds ?? "[]") as string[]));
+      } catch {
+        /* abaikan hold rusak */
+      }
+    }
+    seatIds = [...new Set(holdSeatIds)].filter(Boolean);
+  }
 
   const items: { section_id: string; category_id?: string; quantity: number }[] = quotaItems
     .map((i) => ({
@@ -95,7 +125,13 @@ export async function POST(request: Request) {
 
   if (!seatIds.length && !items.length) {
     return NextResponse.json(
-      { error: { code: "PILIHAN_KOSONG", message: "Pilih kursi atau jumlah tiket" } },
+      {
+        error: {
+          code: "PILIHAN_KOSONG",
+          message: "Pilih kursi atau jumlah tiket",
+          details: { hint: "Kirim seat_ids berisi event_seat_id, atau buat hold lebih dulu" },
+        },
+      },
       { status: 400 },
     );
   }
