@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { ok, badRequest, fail, notFound } from "@/lib/api";
 import { requireAdmin } from "@/lib/auth/guard";
+import { resolveQrToken } from "@/lib/qr/resolve";
 
 /**
  * POST /api/checkin — scan QR order (§8.6).
@@ -18,10 +19,10 @@ export async function POST(request: Request) {
   const eventId = body?.event_id as string | undefined;
   if (!qrHash) return badRequest("qr_token_hash wajib diisi");
 
-  const eTicket = await prisma.eTicket.findUnique({ where: { qrTokenHash: qrHash }, include: { order: { include: { tickets: true } } } });
-  if (!eTicket) return fail(422, "QR_TIDAK_DIKENAL", "Tidak valid: bukan tiket event ini");
+  const resolved = await resolveQrToken(qrHash);
+  if (!resolved.ok) return fail(422, resolved.code, `Tidak valid: ${resolved.message}`);
+  const eTicket = resolved.eTicket;
   if (eventId && eTicket.eventId !== eventId) return fail(422, "EVENT_TIDAK_COCOK", "Tidak valid: tiket untuk event lain");
-  if (eTicket.invalidatedAt) return fail(422, "QR_DINONAKTIFKAN", "Tidak valid: tiket sudah dibatalkan atau direfund");
 
   /* Tiket valid untuk check-in = ISSUED atau USED (USED sudah terpakai, tapi tetap bagian kuota QR).
      REFUNDED / CANCELLED mengurangi kuota (§8.6). */

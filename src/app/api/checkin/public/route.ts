@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { ok, badRequest, fail } from "@/lib/api";
 import { scanAuthorized, unauthorized } from "@/lib/auth/scan";
+import { resolveQrToken } from "@/lib/qr/resolve";
 
 /**
  * POST /api/checkin/public — check-in untuk perangkat petugas.
@@ -14,13 +15,11 @@ export async function POST(request: Request) {
   const eventId = body?.event_id as string | undefined;
   if (!qrHash) return badRequest("qr_token_hash wajib diisi");
 
-  const eTicket = await prisma.eTicket.findUnique({
-    where: { qrTokenHash: qrHash },
-    include: { order: { include: { tickets: true } }, event: true },
-  });
-  if (!eTicket) return fail(422, "QR_TIDAK_DIKENAL", "Bukan tiket event ini");
+  /* Verifikasi token (tanda tangan) lalu cocokkan ke database. */
+  const resolved = await resolveQrToken(qrHash);
+  if (!resolved.ok) return fail(422, resolved.code, resolved.message);
+  const eTicket = resolved.eTicket;
   if (eventId && eTicket.eventId !== eventId) return fail(422, "EVENT_TIDAK_COCOK", "Tiket untuk event lain");
-  if (eTicket.invalidatedAt) return fail(422, "QR_DINONAKTIFKAN", "Tiket sudah dibatalkan atau direfund");
 
   const valid = eTicket.order.tickets.filter((t) => t.ticketStatus === "ISSUED" || t.ticketStatus === "USED");
   const used = eTicket.successfulScanCount;

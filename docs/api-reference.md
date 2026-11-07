@@ -1,18 +1,26 @@
 # API Reference — Summarecon Ticketing
 
-Base URL produksi: `https://summarecon-admin.axtra.tech/api`
-Base URL lokal: `http://localhost:3001/api`
+| Lingkungan | Base URL |
+|---|---|
+| Produksi (admin) | `https://summarecon-admin.axtra.tech/api` |
+| Produksi (petugas) | `https://summarecon-scan.axtra.tech/api` |
+| Lokal | `http://localhost:3001/api` |
 
-Autentikasi memakai cookie sesi (HttpOnly) atau header `Authorization: Bearer <token>` untuk klien non-browser.
+Dua jenis pemakai:
+
+1. **Customer** — login, lihat order, ambil QR e-ticket.
+2. **Petugas/admin** — scan QR, kelola refund, blokir kursi.
 
 ---
 
-## Amplop respons
+## 1. Aturan dasar
+
+### Amplop respons
 
 Sukses:
 
 ```json
-{ "data": { ... } }
+{ "data": { } }
 ```
 
 Gagal:
@@ -21,245 +29,298 @@ Gagal:
 { "error": { "code": "KODE", "message": "Penjelasan", "details": { } } }
 ```
 
-| Kode HTTP | `error.code` | Arti |
-|---|---|---|
-| 400 | `VALIDATION_ERROR` | Body tidak lolos validasi; `details` berisi field yang salah |
-| 400 | `SIGNATURE_INVALID` | Signature callback pembayaran tidak sah |
-| 401 | `UNAUTHENTICATED` | Belum login atau sesi kedaluwarsa |
-| 401 | `INVALID_CREDENTIALS` | Email atau password salah |
-| 403 | `FORBIDDEN` | Role tidak berhak |
-| 403 | `WRONG_PORTAL` | Akun customer dipakai di portal admin (atau sebaliknya) |
-| 403 | `ACCOUNT_INACTIVE` | Akun dinonaktifkan |
-| 404 | `NOT_FOUND` | Data tidak ada |
-| 409 | `CONFLICT` | Bentrok state (kursi terambil, email terdaftar, transisi refund tidak sah) |
-| 422 | `QR_TIDAK_DIKENAL` / `EVENT_TIDAK_COCOK` / `QR_DINONAKTIFKAN` | QR tidak bisa dipakai |
-| 409 | `BATAS_SCAN` | Kuota scan QR order sudah habis |
-
 Daftar memakai `?page=1&perPage=25` (maks 100) dan mengembalikan:
 
 ```json
 { "data": { "meta": { "total": 4, "page": 1, "perPage": 25, "totalPages": 1 }, "items": [ ] } }
 ```
 
+### Kode error
+
+| HTTP | `error.code` | Arti |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | Isi body tidak lolos validasi |
+| 401 | `UNAUTHENTICATED` | Belum login / sesi berakhir |
+| 401 | `INVALID_CREDENTIALS` | Email atau password salah |
+| 401 | `SCAN_UNAUTHORIZED` | Kode akses petugas salah |
+| 403 | `FORBIDDEN` | Role tidak berhak |
+| 403 | `WRONG_PORTAL` | Akun customer dipakai di portal admin (atau sebaliknya) |
+| 403 | `ACCOUNT_INACTIVE` | Akun dinonaktifkan |
+| 404 | `NOT_FOUND` | Data tidak ada |
+| 409 | `CONFLICT` | Bentrok state |
+| 409 | `SEAT_UNAVAILABLE` | Kursi sudah diambil orang lain |
+| 409 | `BATAS_SCAN` | Kuota scan QR sudah habis |
+| 409 | `SCAN_BERSAMAAN` | Dua petugas memindai bersamaan, ulangi |
+| 409 | `ORDER_BELUM_DIBAYAR` | QR belum boleh diterbitkan |
+| 422 | `QR_TIDAK_DIKENAL` | Token tidak ada di database |
+| 422 | `QR_TIDAK_SAH` | Tanda tangan token tidak cocok (QR palsu) |
+| 422 | `EVENT_TIDAK_COCOK` | Tiket untuk event lain |
+| 422 | `QR_DINONAKTIFKAN` | Tiket sudah direfund/dibatalkan |
+
+### Tiga cara autentikasi
+
+| Cara | Dipakai | Header / cookie |
+|---|---|---|
+| Cookie sesi | Web admin & customer | `summa_admin_session` / `summa_customer_session` |
+| Bearer token | Klien non-browser | `Authorization: Bearer <token>` |
+| Kode petugas | Perangkat pemindai | `x-scan-code: <SCAN_ACCESS_CODE>` |
+
 ---
 
-## Auth
+## 2. QR e-ticket — cara kerjanya
 
-### POST /api/auth/register
+Satu order = satu QR. QR boleh dipakai beberapa kali, sebanyak jumlah tiket valid dalam order itu.
 
-Pendaftaran peserta. Role yang dibuat selalu `CUSTOMER`.
+### Bentuk token
+
+```
+TKT.<order_code>.<random>.<signature>
+```
+
+Contoh:
+
+```
+TKT.NEW-2026-0002.rDU49eyu9hHgxNB3DoDx-A.2gkMb_jNrhwdBLFuijFO-8LSs90zR16J
+```
+
+| Bagian | Isi |
+|---|---|
+| `TKT` | penanda format |
+| `<order_code>` | kode order, mis. `NEW-2026-0002` |
+| `<random>` | 16 byte acak base64url — berbeda tiap penerbitan |
+| `<signature>` | HMAC-SHA256 dari `<order_code>.<random>` memakai `QR_SIGNING_SECRET` |
+
+Ditandatangani supaya QR tidak bisa dipalsukan: orang yang tahu formatnya tetap tidak bisa membuat tanda tangan yang sah tanpa kunci server.
+
+### Alur
+
+```
+customer bayar → order PAID
+      ↓
+GET /api/customer/orders/:id/qr      → token diterbitkan & disimpan (sekali)
+      ↓
+token dicetak jadi QR (data_url / PNG)
+      ↓
+petugas scan → POST /api/checkin/public
+      ↓
+verifikasi tanda tangan → cocokkan database → kunci tiket ke-1
+      ↓
+scan berikutnya → tiket ke-2, ke-3, ... sampai kuota habis
+```
+
+### Batas scan
+
+Kuota = jumlah tiket dengan status `ISSUED` atau `USED`. Tiket `REFUNDED`/`CANCELLED` **mengurangi** kuota.
+
+Contoh order 3 tiket, 1 direfund:
+
+| Scan | Hasil |
+|---|---|
+| 1 | valid · tiket ke-1 · 1/2 |
+| 2 | valid · tiket ke-2 · 2/2 |
+| 3 | **409** `BATAS_SCAN` |
+
+---
+
+## 3. Auth
+
+### `POST /api/auth/register`
+
+Pendaftaran peserta. Role selalu `CUSTOMER`.
+
+```json
+{ "full_name": "Peserta Baru", "email": "peserta@mail.id", "phone_number": "0812...", "password": "Rahasia123!" }
+```
+
+`201` → user + `expires_at`, cookie `summa_customer_session` terpasang.
+Password minimal 8 karakter. Email duplikat → `409 CONFLICT`.
+
+### `POST /api/auth/login`
+
+```json
+{ "email": "nadia.demo@example.test", "password": "Summarecon2026!", "audience": "CUSTOMER" }
+```
+
+`audience`: `ADMIN` (admin & petugas) atau `CUSTOMER` (peserta).
+
+| Kasus | Hasil |
+|---|---|
+| Berhasil | `200` + cookie + `expires_at` |
+| Password salah | `401 INVALID_CREDENTIALS` |
+| Customer ke portal admin | `403 WRONG_PORTAL` |
+| Akun nonaktif | `403 ACCOUNT_INACTIVE` |
+
+Masa sesi: admin 12 jam, customer 7 hari. Token asli hanya ada di cookie; database menyimpan hash SHA-256.
+
+### `POST /api/auth/logout`
+
+Mencabut sesi di server lalu mengosongkan cookie.
+
+### `GET /api/auth/me`
+
+```json
+{ "data": { "user_id": "USR-CUS-001", "name": "Nadia Putri", "role": "CUSTOMER", "audience": "CUSTOMER", "session_id": "SES-..." } }
+```
+
+---
+
+## 4. Customer — order & QR
+
+### `GET /api/customer/orders`
+
+Butuh login customer. Hanya mengembalikan order milik sendiri.
 
 ```json
 {
-  "full_name": "Peserta Baru",
-  "email": "peserta@mail.id",
-  "phone_number": "081234567890",
-  "password": "Rahasia123!"
+  "data": [
+    {
+      "order_id": "ORD-NEW-2",
+      "order_code": "NEW-2026-0002",
+      "event": { "id": "EVT-ATR-001", "name": "Bandung Tech & Creative Expo", "start_at": "2026-12-20T03:00:00.000Z" },
+      "order_status": "PAID",
+      "ticket_count": 2,
+      "total_amount": 1000000,
+      "created_at": "2026-11-07T09:20:00.000Z",
+      "e_ticket": {
+        "e_ticket_id": "ETK-...",
+        "valid_ticket_count": 2,
+        "successful_scan_count": 0,
+        "remaining": 2,
+        "status_summary": "UNUSED"
+      }
+    }
+  ]
 }
 ```
 
-Aturan: `full_name` 2–80 karakter, `password` minimal 8 karakter, email unik.
-Respons `201` berisi user dan `expires_at`; cookie `summa_customer_session` langsung dipasang.
+### `GET /api/customer/orders/:id/qr`
 
-| Kasus | Hasil |
-|---|---|
-| Email sudah dipakai | 409 `CONFLICT`, `details.field = "email"` |
-| Password < 8 | 400 `VALIDATION_ERROR`, `details.fieldErrors.password` |
+Menerbitkan QR kalau belum ada, atau mengambil yang sudah ada. **QR tidak pernah berubah** setelah terbit — menambah scan hanya mengubah hitungan.
 
-### POST /api/auth/login
+Kode akses: butuh login customer; order harus milik sendiri (`404` kalau bukan).
 
-```json
-{ "email": "admin.demo@example.test", "password": "Summarecon2026!", "audience": "ADMIN" }
-```
+Syarat: `order_status` harus `PAID` atau mengandung `REFUND`. Selain itu → `409 ORDER_BELUM_DIBAYAR`.
 
-`audience`: `ADMIN` (admin & petugas check-in) atau `CUSTOMER` (peserta).
-
-| Kasus | Hasil |
-|---|---|
-| Berhasil | 200, cookie `summa_admin_session` / `summa_customer_session`, `expires_at` |
-| Password salah | 401 `INVALID_CREDENTIALS` |
-| Customer login ke portal admin | 403 `WRONG_PORTAL` |
-| Akun nonaktif | 403 `ACCOUNT_INACTIVE` |
-
-Sesi: admin 12 jam, customer 7 hari. Token asli hanya ada di cookie; database menyimpan hash SHA-256.
-
-### POST /api/auth/logout
-
-Mencabut sesi di server (bukan hanya menghapus cookie) lalu mengosongkan cookie. Balasan `{ "data": { "logged_out": true } }`.
-
-### GET /api/auth/me
-
-Mengembalikan user yang sedang login.
-
-```json
-{ "data": { "user_id": "USR-ADM-001", "name": "Admin Demo", "email": "admin.demo@example.test", "role": "ADMIN", "audience": "ADMIN", "session_id": "SES-..." } }
-```
-
-Tanpa sesi: 401 `UNAUTHENTICATED`.
-
----
-
-## Dashboard & laporan
-
-### GET /api/dashboard
-
-Ringkasan admin. Semua angka dihitung dari database.
+**JSON (default)**
 
 ```json
 {
   "data": {
-    "events_total": 3,
-    "events_public": 1,
-    "tickets_sold": 4,
-    "capacity": 677,
-    "occupancy_percent": 1,
-    "revenue": 1000000,
-    "orders_paid": 2,
-    "checkins": 1,
-    "refunds_open": 2,
-    "per_event": [ { "event_id": "EVT-DWT-001", "event_name": "...", "status": "COMPLETED", "sold": 2, "capacity": 345 } ]
+    "order_id": "ORD-NEW-2",
+    "order_code": "NEW-2026-0002",
+    "event_name": "Bandung Tech & Creative Expo",
+    "event_start_at": "2026-12-20T03:00:00.000Z",
+    "token": "TKT.NEW-2026-0002.rDU49eyu9hHgxNB3DoDx-A.2gkMb_jNrhwdBLFuijFO-8LSs90zR16J",
+    "valid_ticket_count": 2,
+    "successful_scan_count": 0,
+    "remaining": 2,
+    "exhausted": false,
+    "participants": [
+      { "ticket_id": "TKT-NEW-1", "name": "Nadia Putri", "status": "ISSUED" },
+      { "ticket_id": "TKT-NEW-2", "name": "Rekan Nadia", "status": "ISSUED" }
+    ],
+    "data_url": "data:image/png;base64,..."
   }
 }
 ```
 
-### GET /api/reports/sales?event_id=
+`data_url` siap dipasang langsung ke `<img src>` — tidak perlu library QR di sisi klien.
 
-Penjualan per kategori tiket.
+**PNG**
 
-```json
-{ "data": { "total_revenue": 3050000, "items": [ { "event_id": "...", "category": "Standing A - General Front", "price": 150000, "quota": 100, "sold": 2, "remaining": 98, "revenue": 300000 } ] } }
 ```
+GET /api/customer/orders/ORD-NEW-2/qr?format=png
+```
+
+→ `Content-Type: image/png`, 720×720, cocok untuk cetak atau lampiran WhatsApp.
 
 ---
 
-## Event
+## 5. Check-in (petugas)
 
-### GET /api/events
+### `GET /api/checkin/public`
 
-Filter: `status`, `venue_id`, `q`, `page`, `perPage`.
-
-```json
-{ "data": { "meta": { "total": 3 }, "items": [ {
-  "event_id": "EVT-ATR-001", "event_code": "EVT-2026-ATR-001",
-  "event_name": "Bandung Tech & Creative Expo", "event_status": "SALES_OPEN",
-  "venue": { "id": "VEN-ATR-001", "name": "Atrium Cibadak" },
-  "start_at": "...", "capacity": 80, "sold": 2,
-  "categories": [ { "id": "CAT-ATR-A", "name": "Front Row", "price": 500000, "quota": 24 } ]
-} ] } }
-```
-
-### GET /api/events/:id
-
-Detail lengkap: venue, layout template (booking types + elemen), section, kategori, hitungan status kursi, catatan pembatalan.
-
-### GET /api/events/:id/seats
-
-Denah kursi (`BOOK_BY_SEAT`). Filter: `status`, `section_id`.
+Daftar event yang bisa dipindai. Header `x-scan-code` wajib.
 
 ```json
-[ { "event_seat_id": "ATR-A-01", "row_label": "A", "seat_number": "01", "seat_label": "A01",
-    "position": { "x": 28, "y": 30, "unit": "normalized_percent" }, "status": "AVAILABLE" } ]
+{ "data": [ { "event_id": "EVT-ATR-001", "event_name": "Bandung Tech & Creative Expo", "start_at": "..." } ] }
 ```
 
-### POST /api/events/:id/holds — butuh login (customer)
+### `POST /api/checkin/public`
 
-Kunci kursi 10 menit. Atomik: kalau satu kursi gagal, semuanya batal.
+Memindai QR. Header `x-scan-code` wajib, **tidak butuh login admin**.
 
 ```json
-{ "user_id": "USR-CUS-001", "event_seat_ids": ["ATR-A-01", "ATR-A-02"] }
+{ "qr_token_hash": "TKT.NEW-2026-0002.rDU49...", "event_id": "EVT-ATR-001", "device_id": "GATE-A-1" }
 ```
 
-| Kasus | Hasil |
-|---|---|
-| Berhasil | 201, `{ hold_id, event_seat_ids, reserved_until }` |
-| Ada kursi terambil | 409 `SEAT_UNAVAILABLE`, `details.taken` berisi kursi yang gagal |
-| Balapan dua permintaan | 409 `SEAT_RACE` |
-
-Kursi berubah `AVAILABLE → LOCKED`, `reserved_quantity` section ikut naik.
-
-### GET /api/events/:id/holds — butuh admin
-
-Daftar hold berstatus `ACTIVE` untuk event.
-
-### POST /api/events/:id/seats/block — butuh admin
-
-```json
-{ "event_seat_ids": ["ATR-A-07"], "reason": "kamera", "blocked_by": "USR-ADM-001" }
-```
-
-Kursi terjual atau sedang ditahan tidak bisa diblokir — permintaan campur ditolak 409 seluruhnya (§6.2 no.14–16).
-
-### DELETE /api/events/:id/seats/block?seat_id=ATR-A-07 — butuh admin
-
-Melepas blokir; kursi kembali `AVAILABLE`.
-
----
-
-## Booking
-
-### GET /api/bookings
-
-Filter: `status`, `event_id`, `q`, `page`, `perPage`.
-
-```json
-{ "order_id": "ORD-ATR-001", "order_code": "ATR-2026-0001",
-  "buyer": { "name": "Rafi Pratama", "email": "rafi.demo@example.test" },
-  "order_status": "PAID", "payment_status": "SUCCESS", "quantity": 1,
-  "total_amount": 500000, "ticket_count": 2 }
-```
-
-### GET /api/bookings/:id
-
-Order lengkap: item, payment (+ riwayat callback), tiket per peserta, e-ticket (hitungan scan), refund terkait.
-
----
-
-## Check-in
-
-### POST /api/checkin — butuh admin/petugas
-
-```json
-{ "qr_token_hash": "DUMMY_HASH_QR_ATR_001", "event_id": "EVT-ATR-001", "officer_user_id": "USR-CHK-001" }
-```
-
-Aturan §8.6: satu QR per order, diterima selama jumlah scan < tiket valid (status `ISSUED` atau `USED`; `REFUNDED`/`CANCELLED` mengurangi kuota).
-
-| Kasus | Hasil |
-|---|---|
-| Scan diterima | 200 `{ "result": "VALID", "scan": "1/2", "ticket": { } }` |
-| Kuota habis | 409 `BATAS_SCAN`, `details.scan` |
-| QR tidak dikenal | 422 `QR_TIDAK_DIKENAL` |
-| Event tidak cocok | 422 `EVENT_TIDAK_COCOK` |
-| QR sudah dinonaktifkan | 422 `QR_DINONAKTIFKAN` |
-| Dua petugas bersamaan | satu 200, satu 409 `SCAN_BERSAMAAN` |
-
-### GET /api/checkin?event_id=
-
-100 riwayat scan terakhir.
-
----
-
-## Refund
-
-### GET /api/refunds
-
-Filter: `status`, `event_id`, `page`, `perPage`.
-
-### GET /api/refunds/:id
-
-Detail + timeline + riwayat status + aksi admin.
-
-### PATCH /api/refunds/:id/status — butuh admin
+**Berhasil**
 
 ```json
 {
-  "to_status": "APPROVED",
-  "actor_user_id": "USR-ADM-001",
-  "reason": "Data lengkap",
-  "destination": { "method": "BANK_TRANSFER", "provider_name": "BCA", "account_number": "000123", "account_holder_name": "Rafi" },
-  "manual_transfer": { "processed_by": "USR-ADM-001", "transfer_reference": "TRX-001" }
+  "data": {
+    "result": "VALID",
+    "checkin_id": "CHK-...",
+    "ticket": { "ticket_id": "TKT-NEW-1", "participant_name": "Nadia Putri" },
+    "scan": "1/2",
+    "remaining": 1,
+    "event_name": "Bandung Tech & Creative Expo"
+  }
 }
 ```
+
+**Kuota habis**
+
+```json
+{ "error": { "code": "BATAS_SCAN", "message": "Sudah digunakan: 2/2", "details": { "scan": "2/2" } } }
+```
+
+Yang dijaga server:
+
+- Tanda tangan token diverifikasi → `422 QR_TIDAK_SAH` kalau dipalsukan
+- Dua petugas memindai bersamaan → satu `200`, satu `409 SCAN_BERSAMAAN`
+- Scan atomik: `successfulScanCount` hanya naik kalau nilainya belum berubah
+- Setiap scan sukses menulis satu `checkin_records`
+
+### `POST /api/checkin` (versi admin)
+
+Sama persis, tapi memakai sesi admin, bukan `x-scan-code`. Dipakai halaman `/checkin` di dashboard.
+
+---
+
+## 6. Event, kursi, booking
+
+| Method | Path | Akses | Keterangan |
+|---|---|---|---|
+| GET | `/api/events` | publik | Filter `status`, `venue_id`, `q` |
+| GET | `/api/events/:id` | publik | Detail + section + kategori + hitungan kursi |
+| GET | `/api/events/:id/seats` | publik | Denah kursi, filter `status`, `section_id` |
+| POST | `/api/events/:id/holds` | customer | Kunci kursi 10 menit, atomik |
+| GET | `/api/events/:id/holds` | admin | Hold aktif |
+| POST | `/api/events/:id/seats/block` | admin | Blokir kursi operasional |
+| DELETE | `/api/events/:id/seats/block?seat_id=` | admin | Lepas blokir |
+| GET | `/api/bookings` | publik | Daftar order |
+| GET | `/api/bookings/:id` | publik | Detail order lengkap |
+| POST | `/api/payments/callback` | signature | Idempoten lewat `provider_event_id` |
+
+Contoh kunci kursi:
+
+```json
+POST /api/events/EVT-ATR-001/holds
+{ "user_id": "USR-CUS-001", "event_seat_ids": ["ATR-A-01", "ATR-A-02"] }
+```
+
+Kalau satu kursi gagal, **semua dibatalkan** (`409 SEAT_UNAVAILABLE` + `details.taken`).
+
+---
+
+## 7. Refund
+
+| Method | Path | Akses |
+|---|---|---|
+| GET | `/api/refunds` | publik (filter `status`, `event_id`) |
+| GET | `/api/refunds/:id` | publik |
+| PATCH | `/api/refunds/:id/status` | admin |
 
 Transisi yang diizinkan:
 
@@ -271,110 +332,83 @@ APPROVED           -> PROCESSING | REJECTED
 PROCESSING         -> COMPLETED
 ```
 
-`REQUESTED → APPROVED` khusus refund pembatalan event (tanpa persetujuan peserta, §8.5).
-Saat `COMPLETED`, tiket terkait jadi `REFUNDED` dan kolom `invalidated_at` diisi.
-
-Transisi tidak sah: 409 `CONFLICT` dengan `details.allowed` berisi langkah yang benar.
+`COMPLETED` menonaktifkan tiket terkait dan mengurangi kuota scan otomatis.
 
 ---
 
-## Payment
+## 8. Lain-lain
 
-### POST /api/payments/callback
-
-Callback gateway sandbox. Idempoten lewat `provider_event_id` unik.
-
-```json
-{ "payment_id": "PAY-ATR-001", "provider_event_id": "SBX-CB-001", "event_type": "PAYMENT_SUCCESS", "signature": "valid" }
-```
-
-| Kasus | Hasil |
-|---|---|
-| Pertama kali | 200 `{ "status": "PROCESSED" }`, order `PAID`, tiket `ISSUED`, e-ticket dibuat |
-| Dikirim ulang | 200 `{ "status": "DUPLICATE_IGNORED" }` |
-| Signature tidak `valid` | 400 `SIGNATURE_INVALID`, tetap dicatat sebagai `REJECTED_SIGNATURE` |
-
-`event_type`: `PAYMENT_SUCCESS`, `PAYMENT_FAILED`, `PAYMENT_EXPIRED`.
+| Method | Path | Akses | Isi |
+|---|---|---|---|
+| GET | `/api/dashboard` | publik | Ringkasan angka |
+| GET | `/api/reports/sales` | publik | Penjualan per kategori |
+| GET | `/api/venues` | publik | Venue + layout |
+| GET | `/api/users` | publik | Akun + role |
+| GET | `/api/settings` | publik | Aturan sistem (40 baris) |
 
 ---
 
-## Master data
-
-### GET /api/venues
-
-Venue + layout template + jumlah event.
-
-### GET /api/users — butuh admin
-
-Akun internal beserta role.
-
-### GET /api/settings
-
-Aturan sistem: `booking.seat_lock_duration_minutes` (10), `payment.pending_timeout_minutes` (7), refund H-1, reminder H-3/H-1, dan lainnya (40 baris).
-
----
-
-## Matriks akses
-
-| Endpoint | Tanpa login | Customer | Admin | Petugas check-in |
-|---|---|---|---|---|
-| GET events, seats, venues, settings, dashboard, reports | ✅ | ✅ | ✅ | ✅ |
-| GET bookings, refunds, users | ✅ | ✅ | ✅ | ✅ |
-| POST auth/register, auth/login | ✅ | ✅ | ✅ | ✅ |
-| POST events/:id/holds | ❌ 401 | ✅ | ❌ 403 | ❌ 403 |
-| GET events/:id/holds | ❌ 401 | ❌ 403 | ✅ | ✅ |
-| POST/DELETE seats/block | ❌ 401 | ❌ 403 | ✅ | ✅ |
-| POST checkin | ❌ 401 | ❌ 403 | ✅ | ✅ |
-| PATCH refunds/:id/status | ❌ 401 | ❌ 403 | ✅ | ✅ |
-| POST payments/callback | ✅ (signature) | — | — | — |
-
-Catatan: endpoint baca sengaja masih terbuka untuk prototipe. Sebelum dipakai publik, tambahkan guard yang sama dengan endpoint tulis.
-
----
-
-## Contoh alur lengkap (curl)
+## 9. Contoh alur lengkap
 
 ```bash
-BASE=https://summarecon-admin.axtra.tech/api
+CUST=https://summarecon-admin.axtra.tech/api
+SCAN=https://summarecon-scan.axtra.tech/api
 
-# 1. Login admin, simpan cookie
-curl -c jar.txt -X POST $BASE/auth/login \
+# 1. Customer login
+curl -c jar.txt -X POST $CUST/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"email":"admin.demo@example.test","password":"Summarecon2026!","audience":"ADMIN"}'
+  -d '{"email":"nadia.demo@example.test","password":"Summarecon2026!","audience":"CUSTOMER"}'
 
-# 2. Lihat dashboard
-curl -b jar.txt $BASE/dashboard
+# 2. Lihat order
+curl -b jar.txt $CUST/customer/orders
 
-# 3. Blokir satu kursi
-curl -b jar.txt -X POST $BASE/events/EVT-ATR-001/seats/block \
+# 3. Ambil QR (JSON + data_url)
+curl -b jar.txt $CUST/customer/orders/ORD-NEW-2/qr
+
+# 4. Unduh QR sebagai PNG
+curl -b jar.txt "$CUST/customer/orders/ORD-NEW-2/qr?format=png" -o tiket.png
+
+# 5. Petugas memindai (tanpa login admin)
+curl -X POST $SCAN/checkin/public \
   -H 'Content-Type: application/json' \
-  -d '{"event_seat_ids":["ATR-A-07"],"reason":"kamera"}'
+  -H 'x-scan-code: SCAN-2026' \
+  -d '{"qr_token_hash":"TKT.NEW-2026-0002.<random>.<sig>","event_id":"EVT-ATR-001"}'
 
-# 4. Setujui refund
-curl -b jar.txt -X PATCH $BASE/refunds/RFD-ATR-001/status \
-  -H 'Content-Type: application/json' \
-  -d '{"to_status":"APPROVED","actor_user_id":"USR-ADM-001"}'
-
-# 5. Scan QR
-curl -b jar.txt -X POST $BASE/checkin \
-  -H 'Content-Type: application/json' \
-  -d '{"qr_token_hash":"DUMMY_HASH_QR_ATR_001","event_id":"EVT-ATR-001"}'
-
-# 6. Logout
-curl -b jar.txt -c jar.txt -X POST $BASE/auth/logout
+# 6. Scan lagi sampai kuota habis, lalu ditolak
 ```
 
 ---
 
-## Akun demo
+## 10. Konfigurasi server
 
-Password semua akun: `Summarecon2026!` (bisa diubah lewat `SEED_PASSWORD` saat seeding).
+| Env | Wajib | Isi |
+|---|---|---|
+| `DATABASE_URL` | ya | `file:./dev.db` (SQLite) atau URL Postgres |
+| `QR_SIGNING_SECRET` | ya | Kunci HMAC token QR, minimal 16 karakter |
+| `SCAN_ACCESS_CODE` | ya (untuk /scan) | Kode akses perangkat petugas |
+
+Mengganti `QR_SIGNING_SECRET` membuat **semua QR yang sudah dicetak tidak sah**. Ganti hanya kalau memang ingin membatalkan semuanya.
+
+---
+
+## 11. Akun demo
+
+Password semua: `Summarecon2026!`
 
 | Email | Role | Portal |
 |---|---|---|
-| admin.demo@example.test | ADMIN | admin |
-| checkin.demo@example.test | CHECK_IN_STAFF | admin (menu terbatas) |
-| nadia.demo@example.test | CUSTOMER | customer |
-| rafi.demo@example.test | CUSTOMER | customer |
-| dina.demo@example.test | CUSTOMER | customer |
-| bima.demo@example.test | CUSTOMER | customer |
+| `admin.demo@example.test` | ADMIN | admin |
+| `checkin.demo@example.test` | CHECK_IN_STAFF | admin (menu terbatas) |
+| `nadia.demo@example.test` | CUSTOMER | customer |
+| `rafi.demo@example.test` | CUSTOMER | customer |
+| `dina.demo@example.test` | CUSTOMER | customer |
+| `bima.demo@example.test` | CUSTOMER | customer |
+
+---
+
+## 12. Yang belum ada
+
+- Endpoint tulis untuk membuat order dari customer (`order baru` masih lewat seed/admin).
+- Auth di endpoint baca publik (`/api/bookings`, `/api/refunds`, `/api/users` masih terbuka).
+- Rate limit pada `/api/checkin/public`.
+- Rotasi kode petugas per orang (sekarang satu kode bersama).
