@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { requireAdminPage } from "@/lib/auth/page";
-import { getAdminOrders } from "@/lib/data/admin-db";
+import { getAdminOrders, getAdminEvents } from "@/lib/data/admin-db";
 import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, rupiah } from "@/lib/utils";
 
 export const instant = false;
@@ -10,9 +10,37 @@ export const metadata = { title: "Booking" };
 
 const FILTERS = ["PENDING", "PAID", "EXPIRED", "PARTIALLY_REFUNDED", "REFUNDED"] as const;
 
-export default async function BookingsPage() {
+/**
+ * Daftar order dengan filter event dan status.
+ * Filter disimpan di URL (?event=&status=) supaya bisa dibagikan dan tahan reload.
+ */
+export default async function BookingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ event?: string; status?: string }>;
+}) {
   await requireAdminPage();
-  const orders = await getAdminOrders();
+
+  const { event: eventFilter, status: statusFilter } = await searchParams;
+  const [allOrders, events] = await Promise.all([getAdminOrders(), getAdminEvents()]);
+
+  const orders = allOrders.filter(
+    (o) =>
+      (!eventFilter || o.eventId === eventFilter) &&
+      (!statusFilter || o.orderStatus === statusFilter),
+  );
+
+  const qs = (next: { event?: string; status?: string }) => {
+    const p = new URLSearchParams();
+    const e = next.event ?? eventFilter;
+    const s = next.status ?? statusFilter;
+    if (e) p.set("event", e);
+    if (s) p.set("status", s);
+    const str = p.toString();
+    return str ? `/bookings?${str}` : "/bookings";
+  };
+
+  const activeEvent = events.find((e) => e.id === eventFilter);
 
   return (
     <>
@@ -20,18 +48,49 @@ export default async function BookingsPage() {
         <div>
           <h1 className="page-title">Booking</h1>
           <p className="page-lead">
-            {orders.length} order di database. Status order dan status payment dipisah (§8.1–8.2).
+            {orders.length}
+            {eventFilter || statusFilter ? ` dari ${allOrders.length}` : ""} order
+            {activeEvent ? ` · ${activeEvent.name}` : ""}. Status order dan status payment dipisah (§8.1–8.2).
           </p>
         </div>
       </div>
 
+      <div className="chips" style={{ marginBottom: 10 }}>
+        <Link href={qs({ event: "", status: "" })} className="chip" aria-pressed={!eventFilter && !statusFilter}>
+          Semua {allOrders.length}
+        </Link>
+        {events.map((e) => {
+          const count = allOrders.filter((o) => o.eventId === e.id).length;
+          if (count === 0) return null;
+          return (
+            <Link
+              key={e.id}
+              href={qs({ event: e.id })}
+              className="chip"
+              aria-pressed={eventFilter === e.id}
+            >
+              {e.name} {count}
+            </Link>
+          );
+        })}
+      </div>
+
       <div className="chips" style={{ marginBottom: 12 }}>
-        <span className="chip" aria-pressed="true">Semua {orders.length}</span>
-        {FILTERS.map((f) => (
-          <span className="chip" key={f}>
-            {ORDER_STATUS_LABEL[f]} {orders.filter((o) => o.orderStatus === f).length}
-          </span>
-        ))}
+        {FILTERS.map((f) => {
+          const count = allOrders.filter(
+            (o) => o.orderStatus === f && (!eventFilter || o.eventId === eventFilter),
+          ).length;
+          return (
+            <Link
+              key={f}
+              href={qs({ status: statusFilter === f ? "" : f })}
+              className="chip"
+              aria-pressed={statusFilter === f}
+            >
+              {ORDER_STATUS_LABEL[f]} {count}
+            </Link>
+          );
+        })}
       </div>
 
       <Card flush>
@@ -44,7 +103,7 @@ export default async function BookingsPage() {
           </thead>
           <tbody>
             {orders.length === 0 ? (
-              <tr><td colSpan={9} className="empty">Belum ada order.</td></tr>
+              <tr><td colSpan={9} className="empty">Tidak ada order untuk filter ini.</td></tr>
             ) : (
               orders.map((o) => (
                 <tr key={o.id}>

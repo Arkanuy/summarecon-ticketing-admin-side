@@ -276,10 +276,7 @@ export async function POST(request: Request) {
           where: { eventId: event.id, userId: session.userId, status: "ACTIVE" },
           data: { status: "CONSUMED", releasedAt: now },
         });
-        await tx.eventSeat.updateMany({
-          where: { id: { in: seatIds }, eventId: event.id },
-          data: { currentOrderId: null },
-        });
+
       }
 
       /* ---- 2. Kuota / standing: kurangi counter section ---- */
@@ -341,6 +338,15 @@ export async function POST(request: Request) {
           expiresAt: new Date(now.getTime() + 7 * 60 * 1000),
         },
       });
+
+      /* Ikat kursi ke order supaya admin bisa menelusuri kursi terjual -> order.
+         (Sebelumnya currentOrderId dibiarkan null, kursi SOLD tampak tanpa pemilik.) */
+      if (seatIds.length) {
+        await tx.eventSeat.updateMany({
+          where: { id: { in: seatIds }, eventId: event.id },
+          data: { currentOrderId: order.id },
+        });
+      }
 
       let seatSeq = 0;
       let ticketSeq = 0;

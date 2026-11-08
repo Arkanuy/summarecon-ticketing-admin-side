@@ -23,6 +23,7 @@ export type AdminEventRow = {
   published: boolean;
   bookingMode: "BOOK_BY_SEAT" | "BOOK_BY_QUOTA" | "STANDING";
   startAt: Date;
+  endAt: Date;
   salesStartAt: Date | null;
   salesEndAt: Date | null;
   venueId: string;
@@ -101,6 +102,7 @@ export async function getAdminEvents(): Promise<AdminEventRow[]> {
       published: Boolean(e.publishedAt),
       bookingMode: bookingModeOf(e.sections),
       startAt: e.startAt,
+      endAt: e.endAt,
       salesStartAt: e.salesStartAt,
       salesEndAt: e.salesEndAt,
       venueId: e.venueId,

@@ -6,13 +6,27 @@ import type { AdminEventRow } from "@/lib/data/admin-db";
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGS", "SEP", "OKT", "NOV", "DES"];
 
+/**
+ * Jarak hari ke acara, dipakai untuk menandai event terdekat / yang sedang berlangsung
+ * supaya admin tidak perlu membandingkan tanggal satu per satu.
+ */
+function proximity(start: Date, end: Date, now: Date) {
+  if (now >= start && now <= end) return { label: "Sedang berlangsung", cls: "soon-now" };
+  const days = Math.ceil((start.getTime() - now.getTime()) / 86_400_000);
+  if (days < 0) return null;
+  if (days === 0) return { label: "Hari ini", cls: "soon-now" };
+  if (days <= 7) return { label: `${days} hari lagi`, cls: "soon-near" };
+  return null;
+}
+
 /** Ringkasan event satu baris, datanya dari database. */
 export function EventRow({ event }: { event: AdminEventRow }) {
   const pct = event.quota ? Math.round((event.sold / event.quota) * 100) : 0;
   const start = event.startAt;
+  const proximityInfo = proximity(event.startAt, event.endAt ?? event.startAt, new Date());
 
   return (
-    <div className="event-row">
+    <div className={`event-row${proximityInfo ? " " + proximityInfo.cls : ""}`}>
       <div className="date-chip">
         <b>{start.getDate()}</b>
         <span>{MONTHS[start.getMonth()]}</span>
@@ -22,6 +36,9 @@ export function EventRow({ event }: { event: AdminEventRow }) {
         <Link href={`/events/${event.id}`} className="event-row-title">{event.name}</Link>
         <p className="event-row-meta">
           {event.venueName} · mulai {rupiah(event.priceFrom)}
+          {proximityInfo ? (
+            <span className={`soon-badge ${proximityInfo.cls}`}>{proximityInfo.label}</span>
+          ) : null}
         </p>
       </div>
 

@@ -96,7 +96,8 @@ export default async function EventsPage() {
           <thead>
             <tr>
               <th>Event</th>
-              <th>Jadwal</th>
+              <th>Mulai</th>
+              <th>Selesai</th>
               <th>Venue</th>
               <th>Metode</th>
               <th>Status</th>
@@ -117,6 +118,10 @@ export default async function EventsPage() {
                 <td>
                   {fmtDate(e.startAt)}
                   <div className="sub">{fmtTime(e.startAt)}</div>
+                </td>
+                <td>
+                  {fmtDate(e.endAt)}
+                  <div className="sub">{fmtTime(e.endAt)}</div>
                 </td>
                 <td>{e.venueName}</td>
                 <td>{MODE_LABEL[e.bookingMode] ?? e.bookingMode}</td>

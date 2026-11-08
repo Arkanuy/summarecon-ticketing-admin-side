@@ -603,6 +603,27 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .map-seat:hover:not(:disabled) { transform: none; }
 }
 
+/* Penanda event terdekat / sedang berlangsung di dashboard. */
+.event-row.soon-now { box-shadow: inset 3px 0 0 var(--purple), 0 6px 24px rgba(140,31,43,.10); }
+.event-row.soon-near { box-shadow: inset 3px 0 0 var(--accent), 0 6px 24px rgba(140,31,43,.08); }
+.soon-badge {
+  display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 99px;
+  font-size: 10px; font-weight: 700; letter-spacing: .03em; vertical-align: middle;
+}
+.soon-badge.soon-now { background: var(--purple); color: #fff; }
+.soon-badge.soon-near { background: color-mix(in srgb, var(--accent) 26%, var(--surface)); color: var(--hold-text); }
+
+/* Warna kategori tiket di denah: tiap kategori dapat hue berbeda supaya
+   Reguler dan VIP terbaca tanpa membaca label. */
+.el-section.cat-a { background: color-mix(in srgb, #1F8F7E 22%, var(--surface)); border-color: #1F8F7E; }
+.el-section.cat-b { background: color-mix(in srgb, #E9A12B 24%, var(--surface)); border-color: #E9A12B; }
+.el-section.cat-c { background: color-mix(in srgb, #8C1F2B 18%, var(--surface)); border-color: #8C1F2B; }
+.el-section.cat-d { background: color-mix(in srgb, #6B5A6E 22%, var(--surface)); border-color: #6B5A6E; }
+.el-section.cat-a .map-seat { border-color: #1F8F7E; }
+.el-section.cat-b .map-seat { border-color: #E9A12B; }
+.el-section.cat-c .map-seat { border-color: #8C1F2B; }
+.el-section.cat-d .map-seat { border-color: #6B5A6E; }
+
 /* ---------- dark tweaks ---------- */
 
 :root[data-theme="dark"] .table th { background: rgba(58,34,41,.5); }

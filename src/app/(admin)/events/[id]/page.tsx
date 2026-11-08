@@ -8,6 +8,7 @@ import { TicketPanel } from "@/components/event/TicketPanel";
 import { PriceTiers } from "@/components/event/PriceTiers";
 import { VenueMap } from "@/components/seat-map/VenueMap";
 import { EventStatusActions } from "@/components/event/EventStatusActions";
+import { AddCategory } from "@/components/event/AddCategory";
 import { prisma } from "@/lib/db";
 import { EVENT_STATUS_LABEL, rupiah } from "@/lib/utils";
 
@@ -135,6 +136,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           sold: s.soldQuantity,
           sectionId: s.sectionId,
           sectionKey: `${s.sectionId} ${s.sectionName}`.toLowerCase(),
+          categoryId: s.ticketCategoryId ?? null,
+          categoryName: event.categories.find((c) => c.id === s.ticketCategoryId)?.name ?? null,
         }))}
         seats={seats.map((x) => ({
           id: x.id,
@@ -179,7 +182,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </table>
       </Card>
 
-      <div className="section-head"><h2 className="section-title">Kategori tiket</h2></div>
+      <div className="section-head">
+        <h2 className="section-title">Kategori tiket</h2>
+        <AddCategory
+          eventId={id}
+          sections={sections.map((s) => ({ id: s.id, name: s.sectionName, capacity: s.capacity }))}
+        />
+      </div>
       <Card flush>
         <table className="table">
           <thead>

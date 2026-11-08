@@ -32,7 +32,13 @@ type Section = {
   sectionId: string;
   /** `${section_id master} ${nama}` huruf kecil, untuk mencocokkan elemen denah. */
   sectionKey: string;
+  /** Kategori tiket section ini, untuk membedakan Reguler / VIP / dst di denah. */
+  categoryId?: string | null;
+  categoryName?: string | null;
 };
+
+/** Palet kategori: warna berbeda per kategori supaya area terbaca tanpa membaca label. */
+const CATEGORY_PALETTE = ["cat-a", "cat-b", "cat-c", "cat-d"];
 
 /** Warna per jenis elemen, mengikuti legenda blueprint. */
 const ELEMENT_STYLE: Record<string, { cls: string; tag?: string }> = {
@@ -83,6 +89,14 @@ export function VenueMap({
     arr.push(s);
     bySection.set(s.sectionId, arr);
   }
+
+  /* Urutan kategori -> indeks palet, dipakai untuk mewarnai section. */
+  const categoryOrder = [...new Set(sections.map((s) => s.categoryId).filter(Boolean))] as string[];
+  const catClass = (id?: string | null) => {
+    if (!id) return "";
+    const idx = categoryOrder.indexOf(id);
+    return idx >= 0 ? CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length] : "";
+  };
 
   const statusOf = (id: string) => state[id] ?? "available";
   const selectable = (s: SeatStatus) => s === "available" || s === "blocked";
@@ -182,7 +196,7 @@ export function VenueMap({
           return (
             <div
               key={el.element_id ?? `${i}`}
-              className={`map-el ${style.cls}`}
+              className={`map-el ${style.cls}${section ? ` ${catClass(section.categoryId)}` : ""}`}
               style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${p.width}%`, height: `${p.height}%` }}
             >
               {showSeats && section ? <span className="map-el-label">{el.name}</span> : <span className="map-el-name">{el.name}</span>}
@@ -224,6 +238,7 @@ export function VenueMap({
                 </div>
               ) : section ? (
                 <span className="map-el-meta">
+                  {section.categoryName ? `${section.categoryName} · ` : ""}
                   {BOOKING_TAG[section.bookingType] ?? section.bookingType} · kuota {section.capacity} · terjual {section.sold}
                 </span>
               ) : style.tag ? (
