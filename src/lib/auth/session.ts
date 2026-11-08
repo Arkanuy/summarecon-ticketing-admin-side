@@ -50,6 +50,14 @@ export async function createSession(
   return { token, sessionId: session.id, expiresAt };
 }
 
+/**
+ * Cookie sesi. Admin dan peserta memakai nama berbeda, dan `path` sengaja dipisah
+ * supaya keduanya bisa hidup berdampingan di satu domain tanpa saling menimpa:
+ *  - admin   -> /  (dashboard penuh)
+ *  - peserta -> /  juga, tetapi namanya beda; pembacaan memakai audience eksplisit
+ *
+ * Kalau ke depan admin dipisah ke subdomain, cukup ubah `domain` di sini.
+ */
 export function sessionCookie(audience: "ADMIN" | "CUSTOMER", token: string, expiresAt: Date) {
   return {
     name: audience === "ADMIN" ? ADMIN_COOKIE : CUSTOMER_COOKIE,
@@ -74,8 +82,17 @@ export function clearedCookie(audience: "ADMIN" | "CUSTOMER") {
   };
 }
 
-/** Baca sesi dari cookie, atau dari header Authorization: Bearer (untuk API customer). */
-export async function getSession(request?: Request): Promise<SessionUser | null> {
+/**
+ * Baca sesi dari cookie, atau dari header Authorization: Bearer (API customer).
+ *
+ * `audience` WAJIB disebutkan pemanggil. Dulu fungsi ini mengambil cookie admin
+ * lebih dulu (`ADMIN ?? CUSTOMER`), sehingga di browser yang sama request peserta
+ * ikut membawa sesi admin — keranjang peserta berubah jadi admin.
+ */
+export async function getSession(
+  request?: Request,
+  audience?: "ADMIN" | "CUSTOMER",
+): Promise<SessionUser | null> {
   let token: string | undefined;
 
   const bearer = request?.headers.get("authorization");
@@ -83,7 +100,9 @@ export async function getSession(request?: Request): Promise<SessionUser | null>
 
   if (!token) {
     const jar = await cookies();
-    token = jar.get(ADMIN_COOKIE)?.value ?? jar.get(CUSTOMER_COOKIE)?.value;
+    if (audience === "ADMIN") token = jar.get(ADMIN_COOKIE)?.value;
+    else if (audience === "CUSTOMER") token = jar.get(CUSTOMER_COOKIE)?.value;
+    else token = jar.get(ADMIN_COOKIE)?.value ?? jar.get(CUSTOMER_COOKIE)?.value;
   }
   if (!token) return null;
 
@@ -95,6 +114,9 @@ export async function getSession(request?: Request): Promise<SessionUser | null>
   if (session.revokedAt) return null;
   if (session.expiresAt < new Date()) return null;
   if (session.user.accountStatus !== "ACTIVE") return null;
+
+  /* Cookie yang salah jenis tidak boleh dipakai: admin tidak boleh bertindak sebagai peserta. */
+  if (audience && session.audience !== audience) return null;
 
   return {
     sessionId: session.id,

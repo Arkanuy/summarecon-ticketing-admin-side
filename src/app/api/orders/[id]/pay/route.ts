@@ -15,7 +15,7 @@ import { issueQrToken } from "@/lib/qr/token";
  * Efek: order -> PAID, tiket -> ISSUED, kursi -> SOLD, payment SUCCESS, QR terbit.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getSession(request);
+  const session = await getSession(request, "CUSTOMER");
   if (!session || roleAudience(session.roleId) !== "CUSTOMER") {
     return NextResponse.json(
       { error: { code: "UNAUTHENTICATED", message: "Masuk sebagai peserta untuk membayar" } },

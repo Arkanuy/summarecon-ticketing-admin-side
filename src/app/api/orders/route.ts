@@ -34,7 +34,7 @@ class OrderError extends Error {
 }
 
 export async function POST(request: Request) {
-  const session = await getSession(request);
+  const session = await getSession(request, "CUSTOMER");
   if (!session || roleAudience(session.roleId) !== "CUSTOMER") {
     return NextResponse.json(
       { error: { code: "UNAUTHENTICATED", message: "Masuk sebagai peserta untuk memesan" } },

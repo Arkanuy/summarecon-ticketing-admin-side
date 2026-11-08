@@ -41,7 +41,7 @@ const mask = (value: unknown) => {
 };
 
 export async function GET(request: Request) {
-  const user = await getSession(request);
+  const user = await getSession(request, "ADMIN");
   if (!isAdminUser(user)) {
     return NextResponse.json(
       { error: { code: "UNAUTHENTICATED", message: "Masuk sebagai admin untuk melihat data" } },
