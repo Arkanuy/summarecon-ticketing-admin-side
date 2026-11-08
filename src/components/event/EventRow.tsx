@@ -15,7 +15,8 @@ function proximity(start: Date, end: Date, now: Date) {
   const days = Math.ceil((start.getTime() - now.getTime()) / 86_400_000);
   if (days < 0) return null;
   if (days === 0) return { label: "Hari ini", cls: "soon-now" };
-  if (days <= 7) return { label: `${days} hari lagi`, cls: "soon-near" };
+  /* 30 hari supaya event yang dijadwalkan bulan ini tetap terlihat menonjol. */
+  if (days <= 30) return { label: `${days} hari lagi`, cls: "soon-near" };
   return null;
 }
 

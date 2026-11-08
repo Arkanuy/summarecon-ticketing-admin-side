@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { VersionBadge, Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
+import { EventRow } from "@/components/event/EventRow";
 import { requireAdminPage } from "@/lib/auth/page";
 import { getAdminEvents } from "@/lib/data/admin-db";
 import { EVENT_STATUS_LABEL, rupiah } from "@/lib/utils";
@@ -47,47 +47,8 @@ export default async function EventsPage() {
       {events.length === 0 ? (
         <Card><p className="sub">Belum ada event. Tambahkan lewat seed atau API.</p></Card>
       ) : (
-        events.map((e) => {
-          const pct = e.quota ? Math.round((e.sold / e.quota) * 100) : 0;
-          return (
-            <div className="event-row" key={e.id}>
-              <div className="date-chip">
-                <b>{e.startAt.getDate()}</b>
-                <span>{e.startAt.toLocaleDateString("id-ID", { month: "short", timeZone: "Asia/Jakarta" }).toUpperCase()}</span>
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <Link href={`/events/${e.id}`} className="event-row-title">{e.name}</Link>
-                <p className="event-row-meta">
-                  {e.venueName} · {fmtDate(e.startAt)} {fmtTime(e.startAt)} · mulai {rupiah(e.priceFrom)}
-                </p>
-              </div>
-              <div>
-                <div className="mono" style={{ fontSize: 11.5 }}>{e.sold}/{e.quota}</div>
-                <div className="bar" style={{ marginTop: 5 }}><i style={{ width: `${pct}%` }} /></div>
-              </div>
-              <div><VersionBadge status={e.status} label={EVENT_STATUS_LABEL[e.status as keyof typeof EVENT_STATUS_LABEL] ?? e.status} /></div>
-              <div className="event-row-side">
-                <ToggleSwitch
-                  on={e.published}
-                  label={`Publikasikan ${e.name}`}
-                  endpoint={`/api/events/${e.id}`}
-                  bodyKey="published"
-                  onText={`"${e.name}" dipublikasikan.`}
-                  offText={`"${e.name}" ditarik ke draf.`}
-                  confirmOn={{
-                    title: `Publikasikan "${e.name}"?`,
-                    description:
-                      "Event akan berstatus SALES_OPEN dan langsung muncul di web peserta, selama tanggal penjualan tidak menutupnya.",
-                  }}
-                  confirmOff={{ title: `Tarik "${e.name}" dari publikasi?`, description: "Kembali ke draf, disembunyikan dari peserta." }}
-                />
-                <Link href={`/events/${e.id}`} className="button button-secondary button-small">Kelola</Link>
-              </div>
-            </div>
-          );
-        })
+        events.map((e) => <EventRow key={e.id} event={e} />)
       )}
-
       <div className="section-head">
         <h2 className="section-title">Tabel lengkap</h2>
       </div>
