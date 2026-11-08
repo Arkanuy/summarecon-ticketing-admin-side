@@ -124,11 +124,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   let next: string;
   if (body.published) {
     const now = new Date();
-    const inWindow =
-      event.salesStartAt !== null &&
-      event.salesEndAt !== null &&
-      now >= event.salesStartAt &&
-      now <= event.salesEndAt;
+    /*
+     * Customer side hanya menampilkan event berstatus SALES_OPEN. Dulu syaratnya
+     * mewajibkan salesEndAt terisi, sehingga event tanpa tanggal tutup — atau yang
+     * tanggalnya sudah lewat — berhenti di PUBLISHED dan tidak pernah muncul di web
+     * peserta. Aturannya sekarang: tanggal mulai sudah lewat (atau kosong) dan
+     * tanggal tutup belum lewat (atau kosong) -> langsung SALES_OPEN.
+     */
+    const startedOk = event.salesStartAt === null || now >= event.salesStartAt;
+    const notEnded = event.salesEndAt === null || now <= event.salesEndAt;
+    const inWindow = startedOk && notEnded;
     next = inWindow ? "SALES_OPEN" : "PUBLISHED";
     if (inWindow) {
       // sudah dalam periode jual: catat waktu publikasi kalau belum ada

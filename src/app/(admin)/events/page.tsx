@@ -74,7 +74,11 @@ export default async function EventsPage() {
                   bodyKey="published"
                   onText={`"${e.name}" dipublikasikan.`}
                   offText={`"${e.name}" ditarik ke draf.`}
-                  confirmOn={{ title: `Publikasikan "${e.name}"?`, description: "Event tampil ke peserta sesuai periode penjualan." }}
+                  confirmOn={{
+                    title: `Publikasikan "${e.name}"?`,
+                    description:
+                      "Event akan berstatus SALES_OPEN dan langsung muncul di web peserta, selama tanggal penjualan tidak menutupnya.",
+                  }}
                   confirmOff={{ title: `Tarik "${e.name}" dari publikasi?`, description: "Kembali ke draf, disembunyikan dari peserta." }}
                 />
                 <Link href={`/events/${e.id}`} className="button button-secondary button-small">Kelola</Link>
