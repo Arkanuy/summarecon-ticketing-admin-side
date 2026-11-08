@@ -3,7 +3,8 @@ import { getSession, isAdminUser } from "@/lib/auth/session";
 
 /** Guard untuk Server Component halaman. Redirect ke /login kalau bukan admin. */
 export async function requireAdminPage() {
-  const user = await getSession();
+  /* audience wajib: jangan sampai cookie peserta dipakai membuka halaman admin. */
+  const user = await getSession(undefined, "ADMIN");
   if (!isAdminUser(user)) redirect("/login");
   return user;
 }
