@@ -315,9 +315,44 @@ export async function POST(request: Request) {
       /* ---- 3. Order + item + tiket ---- */
       const subtotal = lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
       const totalQty = lines.reduce((sum, l) => sum + l.quantity, 0);
-      const seq = (await tx.order.count()) + 1;
-      const orderId = `ORD-${String(Date.now()).slice(-8)}-${seq}`;
-      const orderCode = `ORD-${new Date().getFullYear()}-${String(seq).padStart(4, "0")}`;
+      /*
+       * orderCode TIDAK boleh diturunkan dari jumlah baris.
+       *
+       * Dulu: `count + 1`. Begitu ada satu order yang dihapus, nomornya dipakai ulang
+       * dan menabrak unique constraint -> POST /api/orders selalu 500, dan customer
+       * side jatuh ke order palsu di localStorage. Sekarang: nomor urut diambil dari
+       * order terakhir yang benar-benar ada (maksimum), jam & acak menutup sisa celah.
+       */
+      /*
+       * Nomor urut dicari dari SEMUA kode tahun ini lalu diambil maksimum numerik.
+       * Mengurutkan string salah: "ORD-2026-0023-K8SO" < "ORD-2026-0001-KZWV" karena
+       * 'K' > '0', sehingga urutan bisa mundur ke 0001.
+       */
+      const year = new Date().getFullYear();
+      const codes = await tx.order.findMany({
+        where: { orderCode: { startsWith: `ORD-${year}-` } },
+        select: { orderCode: true },
+      });
+      const lastSeq = codes.reduce((max, o) => {
+        const part = o.orderCode.split("-")[2] ?? "0";
+        const n = Number(part);
+        return Number.isFinite(n) && n > max ? n : max;
+      }, 0);
+
+      const stamp = Date.now().toString(36).toUpperCase().slice(-4);
+      const rand = Math.floor(1000 + Math.random() * 9000);
+
+      let seq = lastSeq + 1;
+      let orderCode = `ORD-${year}-${String(seq).padStart(4, "0")}-${stamp}${rand}`;
+      /* Jaga-jaga: kalau tetap bentrok (order bersamaan), tambah urutan lagi. */
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const exists = await tx.order.findUnique({ where: { orderCode }, select: { id: true } });
+        if (!exists) break;
+        seq++;
+        orderCode = `ORD-${year}-${String(seq).padStart(4, "0")}-${stamp}${rand}`;
+      }
+
+      const orderId = `ORD-${String(Date.now()).slice(-8)}-${seq}-${rand.toString().slice(-2)}`;
 
       const order = await tx.order.create({
         data: {
@@ -450,9 +485,18 @@ export async function POST(request: Request) {
       );
     }
     const message = err instanceof Error ? err.message : "Gagal membuat pesanan";
+    const isUnique = /Unique constraint/i.test(message);
     return NextResponse.json(
-      { error: { code: "ORDER_GAGAL", message, details: { hint: "Periksa seat_ids / items" } } },
-      { status: 500 },
+      {
+        error: {
+          code: isUnique ? "KODE_ORDER_BENTROK" : "ORDER_GAGAL",
+          message: isUnique
+            ? "Gagal menerbitkan kode order (bentrok). Coba lagi — sistem akan memakai kode berikutnya."
+            : message,
+          details: isUnique ? undefined : { hint: "Periksa seat_ids / items" },
+        },
+      },
+      { status: isUnique ? 409 : 500 },
     );
   }
 }
