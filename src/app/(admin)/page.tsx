@@ -1,17 +1,47 @@
 import Link from "next/link";
 import { EventRow } from "@/components/event/EventRow";
+import { EventFilter } from "@/components/event/EventFilter";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { requireAdminPage } from "@/lib/auth/page";
 import { getAdminDashboard } from "@/lib/data/admin-db";
+import { EVENT_STATUS_LABEL, type EventStatus } from "@/lib/event-status";
 import { ORDER_STATUS_LABEL, REFUND_STATUS_LABEL, rupiah } from "@/lib/utils";
 
 export const instant = false;
 export const metadata = { title: "Dashboard" };
 
-export default async function DashboardPage() {
+/**
+ * Dashboard menerima filter yang sama dengan halaman Event (?status=&from=&to=)
+ * supaya panitia yang mengatur banyak acara tidak perlu pindah halaman hanya
+ * untuk mempersempit daftar. Angka kartu statistik tetap dihitung dari SELURUH
+ * data — itu ringkasan keseluruhan, bukan ringkasan hasil filter.
+ */
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; from?: string; to?: string }>;
+}) {
   await requireAdminPage();
+  const { status: statusFilter, from, to } = await searchParams;
   const { events, recentOrders, openRefunds, stats } = await getAdminDashboard();
+
+  const fromDate = from ? new Date(`${from}T00:00:00+07:00`) : null;
+  const toDate = to ? new Date(`${to}T23:59:59+07:00`) : null;
+
+  const visible = events.filter((e) => {
+    if (statusFilter && e.status !== statusFilter) return false;
+    if (fromDate && e.startAt < fromDate) return false;
+    if (toDate && e.startAt > toDate) return false;
+    return true;
+  });
+
+  const statusOptions = (Object.keys(EVENT_STATUS_LABEL) as EventStatus[]).map((value) => ({
+    value,
+    label: EVENT_STATUS_LABEL[value],
+    count: events.filter((e) => e.status === value).length,
+  }));
+
   const occupancy = stats.quota ? Math.round((stats.sold / stats.quota) * 100) : 0;
 
   return (
@@ -20,7 +50,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="page-title">Ringkasan hari ini</h1>
           <p className="page-lead">
-            {stats.published} event publik · {stats.sold} tiket terjual dari {stats.quota} kuota.
+            {stats.published} event terbit · {stats.sold} tiket terjual dari {stats.quota} kuota.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -53,10 +83,19 @@ export default async function DashboardPage() {
         <h2 className="section-title">Event</h2>
         <Link href="/events" className="back-link" style={{ margin: 0 }}>Kelola semua →</Link>
       </div>
-      {events.length === 0 ? (
-        <Card><p className="sub">Belum ada event di database.</p></Card>
+
+      <EventFilter status={statusFilter ?? ""} from={from ?? ""} to={to ?? ""} statusOptions={statusOptions} />
+
+      {visible.length === 0 ? (
+        <Card>
+          <p className="sub">
+            {statusFilter || from || to
+              ? "Tidak ada event yang cocok dengan filter ini."
+              : "Belum ada event di database."}
+          </p>
+        </Card>
       ) : (
-        events.map((e) => <EventRow key={e.id} event={e} />)
+        visible.map((e) => <EventRow key={e.id} event={e} />)
       )}
 
       <div className="grid g2" style={{ marginTop: 22 }}>

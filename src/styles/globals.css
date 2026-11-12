@@ -21,9 +21,11 @@
   --ok-text: #14695e;
   --hold-text: #805616;
   /* token tambahan supaya tidak ada hex liar yang cuma cocok di satu tema */
-  --muted-2: #9c8b91;      /* label kecil, overline */
+  /* muted-2 & muted-3 dinaikkan agar lolos WCAG AA 4.5:1; versi lama 3.07 dan 3.82
+     gagal untuk teks 10-11px yang justru dipakai di header tabel dan label form. */
+  --muted-2: #6f6066;      /* label kecil, overline           (5.84:1 di surface) */
   --note-ink: #6b5058;     /* teks kotak catatan, ikut tema */
-  --muted-3: #8a7b82;      /* header tabel, label form */
+  --muted-3: #75676d;      /* header tabel, label form        (5.28:1 di surface) */
   --nav-ink: #4c3d45;      /* teks menu sidebar */
   --card-raised: #ffffff;
   --hover-soft: rgba(253, 233, 228, .55);
@@ -167,8 +169,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .button-block { width: 100%; }
 .button:disabled { opacity: .45; cursor: not-allowed; }
 .icon-button { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--card-raised); color: var(--purple-dark); font-size: 15px; cursor: pointer; }
-.icon-button:hover { background: var(--soft-purple); color: var(--purple-dark); }
-.icon-button:hover { border-color: var(--line-strong); background: var(--soft-purple); }
+.icon-button:hover { border-color: var(--line-strong); background: var(--soft-purple); color: var(--purple-dark); }
 
 /* ---------- kartu & panel ---------- */
 .card { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 14px; }
@@ -189,7 +190,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* ---------- tabel: inti admin panel ---------- */
 .table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.table th { padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--hover-soft); color: var(--muted-3); font-family: "Plus Jakarta Sans", sans-serif; font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; text-align: left; white-space: nowrap; }
+.table th { padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--hover-soft); color: var(--muted-3); font-family: "Plus Jakarta Sans", sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; text-align: left; white-space: nowrap; }
 .table td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table tbody tr:hover { background: var(--hover-soft); }
@@ -233,9 +234,53 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* ---------- chip filter ---------- */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { min-height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: #685961; font-size: 11.5px; cursor: pointer; transition: .15s; }
+.chip { min-height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted-2); font-size: 11.5px; cursor: pointer; transition: .15s; }
 .chip:hover, .chip[aria-pressed="true"] { border-color: var(--purple); background: var(--soft-purple); color: var(--purple-dark); }
 .chip[aria-pressed="true"] { font-weight: 700; }
+
+/* ---------- pencarian & filter daftar ---------- */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.search-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.search-bar input {
+  flex: 1 1 280px; min-width: 0; min-height: 38px; padding: 8px 12px;
+  border: 1px solid var(--line); border-radius: 9px;
+  background: var(--surface); color: var(--ink); font-size: 13px;
+}
+.search-bar input::placeholder { color: var(--muted-2); }
+.search-bar input:focus { outline: none; border-color: var(--purple); }
+.search-bar input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
+
+.filter-bar {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 12px 20px; flex-wrap: wrap; margin-bottom: 14px;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface);
+}
+.filter-dates { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; }
+.filter-dates .field { margin: 0; }
+.filter-dates input {
+  min-height: 34px; padding: 6px 10px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--surface); color: var(--ink); font-size: 12.5px;
+}
+.filter-dates input:focus { outline: none; border-color: var(--purple); }
+
+.actions-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Grup tombol aksi filter: satu baris, rapat, dengan pemisah tipis antara aksi
+   utama (Terapkan) dan preset cepat. Sebelumnya tombol preset terdorong ke ujung
+   kanan oleh margin-left:auto sehingga terlihat seperti bagian lain. */
+.filter-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.filter-sep { width: 1px; height: 20px; background: var(--line); margin: 0 2px; }
+.filter-bar .field { margin: 0; }
+.filter-bar .field input {
+  min-height: 36px; padding: 6px 10px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--surface); color: var(--ink); font-size: 12.5px;
+}
+.filter-bar .field input:focus { outline: none; border-color: var(--purple); }
 
 /* ---------- baris event ringkas (bukan kartu besar) ---------- */
 .event-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 132px 96px 92px; align-items: center; gap: 14px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
@@ -421,29 +466,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .toast-bad .toast-dot { background: var(--error); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
 
-/* ---------- animasi umum ---------- */
-.page > * { animation: rise-in .3s cubic-bezier(.2, .7, .2, 1) both; }
-.page > *:nth-child(2) { animation-delay: .04s; }
-.page > *:nth-child(3) { animation-delay: .08s; }
-.page > *:nth-child(4) { animation-delay: .12s; }
-.row-item, .event-row { animation: rise-in .3s cubic-bezier(.2, .7, .2, 1) both; }
-.row-item:nth-child(2), .event-row:nth-child(2) { animation-delay: .03s; }
-.row-item:nth-child(3), .event-row:nth-child(3) { animation-delay: .06s; }
-.row-item:nth-child(4), .event-row:nth-child(4) { animation-delay: .09s; }
-.row-item:nth-child(5), .event-row:nth-child(5) { animation-delay: .12s; }
+/* ---------- animasi ----------
+   Hanya untuk hal yang muncul akibat aksi pengguna (modal, toast, drawer) dan
+   indikator loading. Baris tabel dan kartu statistik TIDAK dianimasikan: isi
+   yang sama muncul ulang setiap refresh 5 detik kalau auto-refresh aktif, dan
+   animasi masuk berulang membuat panel sulit dibaca saat memantau angka. */
 @keyframes rise-in { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
 
-.table tbody tr { animation: rise-in .26s ease-out both; }
-.table tbody tr:nth-child(2) { animation-delay: .02s }
-.table tbody tr:nth-child(3) { animation-delay: .04s }
-.table tbody tr:nth-child(4) { animation-delay: .06s }
-
-.nav-item, .button, .chip, .tgl, .card, .stat { transition: background .16s ease, color .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease; }
-.button:active:not(:disabled) { transform: translateY(1px) scale(.99); }
-.nav-item:active { transform: scale(.985); }
-.card:hover { box-shadow: 0 8px 26px rgba(140, 31, 43, .1); }
-.stat { animation: rise-in .32s cubic-bezier(.2, .7, .2, 1) both; }
-.stat:nth-child(2) { animation-delay: .05s } .stat:nth-child(3) { animation-delay: .1s } .stat:nth-child(4) { animation-delay: .15s }
+.nav-item, .button, .chip, .tgl, .card, .stat {
+  transition: background .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.button:active:not(:disabled) { transform: translateY(1px); }
 
 /* indikator loading tombol */
 .button[data-busy="true"] { position: relative; color: transparent; }
@@ -457,13 +490,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @keyframes spin { to { transform: rotate(360deg) } }
 
 .seat { transition: transform .14s ease, background .14s ease, border-color .14s ease; }
-.bar i { transition: width .6s cubic-bezier(.2, .7, .2, 1); }
+.bar i { transition: width .3s ease; }
 @media (prefers-reduced-motion: reduce) {
-  .page > *, .row-item, .event-row, .stat, .table tbody tr, .modal-card, .modal-backdrop, .toast { animation: none !important; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }
 
 /* ---------- halaman login ---------- */
-.login-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(ellipse at 78% 30%, rgba(244,162,59,.16), transparent 46%), var(--paper); }
+.login-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--paper); }
 .login-card { width: 100%; max-width: 400px; padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 6px 24px rgba(140,31,43,.1); }
 .login-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
 .login-brand .brand-mark { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(135deg,#d93a2f,#ee6a35 60%,#f4a23b); }
@@ -506,13 +543,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   position: relative;
   width: 100%;
   aspect-ratio: 4 / 3;
-  background:
-    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 42%),
-    var(--surface);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 6px 24px rgba(140, 31, 43, .10);
 }
 
 .map-el {
@@ -595,8 +629,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   background: repeating-linear-gradient(45deg, var(--seat-block-a), var(--seat-block-a) 2px, var(--surface) 2px, var(--surface) 4px);
   border-color: var(--line-strong); color: var(--muted-3); cursor: pointer;
 }
-.ms-sel { background: var(--purple) !important; border-color: var(--purple-dark) !important; color: #fff !important; transform: scale(1.08); box-shadow: 0 0 0 2px color-mix(in srgb, var(--purple) 30%, transparent); }
-.ms-sel::after { content: "✓"; }
+/* Kursi terpilih: satu kelas menang tanpa !important karena .ms-sel ditulis
+   setelah .map-seat di stylesheet yang sama. */
+.map-seat.ms-sel { background: var(--purple); border-color: var(--purple-dark); color: #fff; transform: scale(1.08); box-shadow: 0 0 0 2px color-mix(in srgb, var(--purple) 30%, transparent); }
+.map-seat.ms-sel::after { content: "✓"; }
 
 @media (prefers-reduced-motion: reduce) {
   .map-seat { transition: none; }
@@ -649,9 +685,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .page { padding: 14px 12px 32px; }
   .page-title { font-size: 18px; }
   .page-head { align-items: flex-start; }
+
+  /* Target sentuh 44px di ponsel. Desktop tetap 36/32px karena pakai tetikus
+     dan tabelnya sudah padat; di layar sentuh ukuran itu terlalu kecil. */
+  .button, .chip { min-height: 44px; }
+  .button-small { min-height: 44px; padding: 0 14px; }
+  .icon-button, .user-trigger { min-height: 44px; height: 44px; }
+  .icon-button { width: 44px; }
+  .search-bar input, .filter-dates input { min-height: 44px; }
+  .field input, .field select, .field textarea { min-height: 44px; }
+  /* Spesifisitas harus menyamai .filter-bar .field input di atas (0-3-1),
+     kalau tidak aturan 36px menang dan input tanggal tetap kecil di ponsel. */
+  .filter-bar .field input { min-height: 44px; }
+  .filter-bar { gap: 12px; }
+  .filter-dates { width: 100%; }
+  .filter-dates .field { flex: 1 1 130px; }
+
   .event-row { grid-template-columns: 40px minmax(0, 1fr); row-gap: 8px; }
   .event-row > :nth-child(3) { grid-column: 1 / -1; }
-  .event-row-side { grid-column: 1 / -1; justify-content: space-between; }
+  .event-row-side { grid-column: 1 / -1; justify-content: space-between; flex-wrap: wrap; }
+  .actions-row { justify-content: flex-start; }
   .seat { width: 26px; height: 26px; flex-basis: 26px; font-size: 8.5px; }
   .stage { width: 70%; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }

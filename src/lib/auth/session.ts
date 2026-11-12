@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import type { Role } from "@/types/admin";
 
 export const ADMIN_COOKIE = "summa_admin_session";
 export const CUSTOMER_COOKIE = "summa_customer_session";

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { VersionBadge } from "@/components/ui/Badge";
-import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
-import { EVENT_STATUS_LABEL, rupiah } from "@/lib/utils";
+import { EventStatusActions } from "@/components/event/EventStatusActions";
+import { rupiah } from "@/lib/utils";
+import { EVENT_STATUS_LABEL } from "@/lib/event-status";
 import type { AdminEventRow } from "@/lib/data/admin-db";
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGS", "SEP", "OKT", "NOV", "DES"];
@@ -60,22 +61,7 @@ export function EventRow({ event }: { event: AdminEventRow }) {
       </div>
 
       <div className="event-row-side">
-        <ToggleSwitch
-          on={event.published}
-          label={`Publikasikan ${event.name}`}
-          endpoint={`/api/events/${event.id}`}
-          bodyKey="published"
-          onText={`"${event.name}" dipublikasikan.`}
-          offText={`"${event.name}" ditarik ke draf.`}
-          confirmOn={{
-            title: `Publikasikan "${event.name}"?`,
-            description: "Event akan tampil ke peserta dan memakai status sesuai periode penjualannya.",
-          }}
-          confirmOff={{
-            title: `Tarik "${event.name}" dari publikasi?`,
-            description: "Event kembali ke draf dan disembunyikan dari peserta. Pesanan yang sudah ada tidak berubah.",
-          }}
-        />
+        <EventStatusActions eventId={event.id} eventName={event.name} status={event.status} />
         <Link href={`/events/${event.id}`} className="button button-secondary button-small">
           Kelola
         </Link>

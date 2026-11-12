@@ -10,7 +10,8 @@ import { VenueMap } from "@/components/seat-map/VenueMap";
 import { EventStatusActions } from "@/components/event/EventStatusActions";
 import { AddCategory } from "@/components/event/AddCategory";
 import { prisma } from "@/lib/db";
-import { EVENT_STATUS_LABEL, rupiah } from "@/lib/utils";
+import { rupiah } from "@/lib/utils";
+import { EVENT_STATUS_LABEL } from "@/lib/event-status";
 
 export const instant = false;
 
@@ -40,7 +41,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     where: { eventId: id },
     orderBy: { sectionName: "asc" },
   });
-  const seatStats = await prisma.eventSeat.groupBy({ by: ["status"], where: { eventId: id }, _count: true });
   /* Posisi elemen denah: dari layout template yang dipakai event ini. */
   const template = await prisma.layoutTemplate.findUnique({
     where: { id: (await prisma.event.findUnique({ where: { id }, select: { layoutTemplateId: true } }))?.layoutTemplateId ?? "" },

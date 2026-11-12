@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { ok, created, badRequest, paging, pageMeta, parseJsonSafe } from "@/lib/api";
+import { ok, created, badRequest, paging, pageMeta } from "@/lib/api";
 import { requireAdmin } from "@/lib/auth/guard";
 
 /** GET /api/events?status=&venue_id=&q=&page=&perPage= */

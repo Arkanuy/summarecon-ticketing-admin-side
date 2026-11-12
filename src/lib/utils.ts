@@ -86,6 +86,13 @@ export const EVENT_STATUS_LABEL: Record<EventStatus, string> = {
   DIBATALKAN: "Dibatalkan",
 };
 
+/**
+ * Label status event untuk nilai yang benar-benar dipakai database
+ * (DRAFT/PUBLISHED/SALES_OPEN/ONGOING/COMPLETED/CANCELLED). Sumber tunggalnya
+ * ada di lib/event-status.ts supaya tidak ada dua daftar yang bisa berbeda.
+ */
+export { EVENT_STATUS_LABEL as EVENT_STATUS_LABEL_DB } from "@/lib/event-status";
+
 export const BOOKING_MODE_LABEL: Record<BookingMode, string> = {
   SEAT: "Book by Seat",
   QUOTA: "Book by Quota",

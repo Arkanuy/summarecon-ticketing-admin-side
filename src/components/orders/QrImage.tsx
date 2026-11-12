@@ -19,8 +19,8 @@ export async function QrImage({ token, size = 120 }: { token: string | null; siz
     color: { dark: "#2A1F2D", light: "#FFFFFF" },
   });
 
-  /* eslint-disable-next-line @next/next/no-img-element */
   return (
+    /* eslint-disable-next-line @next/next/no-img-element -- data URL hasil QRCode, bukan aset statis yang bisa dioptimasi next/image */
     <img
       src={dataUrl}
       width={size}

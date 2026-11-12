@@ -2,9 +2,10 @@ import Link from "next/link";
 import { VersionBadge, Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EventRow } from "@/components/event/EventRow";
+import { EventFilter } from "@/components/event/EventFilter";
 import { requireAdminPage } from "@/lib/auth/page";
 import { getAdminEvents } from "@/lib/data/admin-db";
-import { EVENT_STATUS_LABEL, rupiah } from "@/lib/utils";
+import { EVENT_STATUS_LABEL, type EventStatus } from "@/lib/event-status";
 
 export const instant = false;
 export const metadata = { title: "Event" };
@@ -20,9 +21,33 @@ const fmtDate = (d: Date) =>
 const fmtTime = (d: Date) =>
   d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", ".");
 
-export default async function EventsPage() {
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; from?: string; to?: string }>;
+}) {
   await requireAdminPage();
-  const events = await getAdminEvents();
+  const { status: statusFilter, from, to } = await searchParams;
+
+  const all = await getAdminEvents();
+
+  const fromDate = from ? new Date(`${from}T00:00:00+07:00`) : null;
+  const toDate = to ? new Date(`${to}T23:59:59+07:00`) : null;
+
+  /* Filter diterapkan di sini, bukan di SQL: getAdminEvents juga dipakai dashboard,
+     dan jumlah event puluhan sehingga satu round-trip lebih murah dari dua fungsi. */
+  const events = all.filter((e) => {
+    if (statusFilter && e.status !== statusFilter) return false;
+    if (fromDate && e.startAt < fromDate) return false;
+    if (toDate && e.startAt > toDate) return false;
+    return true;
+  });
+
+  const statusOptions = (Object.keys(EVENT_STATUS_LABEL) as EventStatus[]).map((value) => ({
+    value,
+    label: EVENT_STATUS_LABEL[value],
+    count: all.filter((e) => e.status === value).length,
+  }));
 
   return (
     <>
@@ -30,7 +55,9 @@ export default async function EventsPage() {
         <div>
           <h1 className="page-title">Event</h1>
           <p className="page-lead">
-            {events.length} event di database. Konfigurasi kursi, kategori, dan harga dikelola per event (§7.1).
+            {events.length}
+            {statusFilter || from || to ? ` dari ${all.length}` : ""} event. Alur status: Draf, Terbit,
+            Buka penjualan. Peserta hanya melihat event yang sudah terbit.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -39,18 +66,28 @@ export default async function EventsPage() {
         </div>
       </div>
 
-      <div className="section-head" style={{ marginTop: 0 }}>
-        <h2 className="section-title">Ringkasan</h2>
-        <span className="sub">{events.length} event</span>
-      </div>
+      <EventFilter
+        status={statusFilter ?? ""}
+        from={from ?? ""}
+        to={to ?? ""}
+        statusOptions={statusOptions}
+      />
 
       {events.length === 0 ? (
-        <Card><p className="sub">Belum ada event. Tambahkan lewat seed atau API.</p></Card>
+        <Card>
+          <p className="sub">
+            {statusFilter || from || to
+              ? "Tidak ada event yang cocok dengan filter ini."
+              : "Belum ada event. Tambahkan lewat tombol Event baru."}
+          </p>
+        </Card>
       ) : (
         events.map((e) => <EventRow key={e.id} event={e} />)
       )}
+
       <div className="section-head">
         <h2 className="section-title">Tabel lengkap</h2>
+        <span className="sub">{events.length} baris</span>
       </div>
       <Card flush>
         <table className="table">
@@ -99,8 +136,8 @@ export default async function EventsPage() {
       </Card>
 
       <div className="note">
-        Angka di halaman ini dibaca langsung dari database, bukan dari data contoh. Menambah event lewat API
-        langsung terlihat setelah halaman dimuat ulang.
+        &quot;Terbit&quot; berarti event sudah terlihat peserta. Penjualan baru aktif setelah status
+        &quot;Buka penjualan&quot;. Filter tanggal memakai tanggal mulai acara (WIB).
       </div>
     </>
   );
