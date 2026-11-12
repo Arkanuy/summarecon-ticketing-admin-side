@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { ok, paging, pageMeta, badRequest, created } from "@/lib/api";
+import { ok, paging, pageMeta } from "@/lib/api";
 
 /** GET /api/refunds?status=&event_id=&page=&perPage= */
 export async function GET(request: Request) {

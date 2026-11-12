@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { ok, fail } from "@/lib/api";
+import { ok } from "@/lib/api";
 import { requireCustomer } from "@/lib/auth/guard";
 import { settlePendingOrders } from "@/lib/settle";
 

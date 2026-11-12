@@ -21,6 +21,21 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             Penjualan per event dan kategori. Filter periode memakai tanggal pembayaran order.
           </p>
         </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <a
+            href={`/api/reports/sales/export${(() => {
+              const p = new URLSearchParams();
+              if (from) p.set("from", from);
+              if (to) p.set("to", to);
+              const s = p.toString();
+              return s ? `?${s}` : "";
+            })()}`}
+            className="button button-primary"
+            download
+          >
+            Unduh CSV
+          </a>
+        </div>
       </div>
 
       <ReportFilter from={from ?? ""} to={to ?? ""} />

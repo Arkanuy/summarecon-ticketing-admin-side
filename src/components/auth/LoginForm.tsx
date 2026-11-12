@@ -61,7 +61,11 @@ export function LoginForm() {
           Akun admin dan petugas check-in memakai halaman yang sama. Hak akses ditentukan oleh role.
         </p>
 
-        <form onSubmit={submit} noValidate>
+        {/* method="post" + action sebagai jaring pengaman: kalau hidrasi gagal
+            (JS diblokir, chunk gagal dimuat), browser tidak boleh jatuh ke GET
+            dan menaruh email+password di URL. Server menolak POST ke /login,
+            jadi tidak ada jalur login lewat HTML murni. */}
+        <form onSubmit={submit} method="post" action="/login" noValidate>
           <div className="field">
             <label htmlFor="email">Email</label>
             <input

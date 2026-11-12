@@ -38,21 +38,11 @@ export type AdminEventRow = {
   soldBySection?: Map<string, number>;
 };
 
-/** Penjualan kategori = jumlah sold_quantity pada section yang memakainya. */
-function soldFor(categoryId: string, sections: { ticketCategoryId: string | null; soldQuantity: number }[]) {
-  return sections.filter((s) => s.ticketCategoryId === categoryId).reduce((a, s) => a + s.soldQuantity, 0);
-}
-
+/** Penjualan kategori = jumlah tiket terbit pada section milik kategori itu. */
 function bookingModeOf(sections: { bookingType: string }[]): AdminEventRow["bookingMode"] {
   if (sections.some((s) => s.bookingType === "BOOK_BY_SEAT")) return "BOOK_BY_SEAT";
   if (sections.some((s) => s.bookingType === "STANDING")) return "STANDING";
   return "BOOK_BY_QUOTA";
-}
-
-/** Label kategori event: ambil dari nama event karena tabel events tidak punya kolom kategori. */
-function categoryLabel(code: string) {
-  const parts = code.split("-");
-  return parts[2] ?? "Event";
 }
 
 export async function getAdminEvents(): Promise<AdminEventRow[]> {
@@ -148,8 +138,28 @@ function readBuyer(snapshot: string | null): { name: string; email: string } {
   }
 }
 
-export async function getAdminOrders(): Promise<AdminOrderRow[]> {
+export async function getAdminOrders(search?: string): Promise<AdminOrderRow[]> {
+  /*
+   * Pencarian dilakukan di database, bukan setelah semua baris dimuat.
+   * Dengan 400+ peserta, memuat seluruh tabel lalu memfilter di memori membuat
+   * halaman Booking makin lambat setiap kali ada order baru.
+   */
+  const q = search?.trim();
+  const where = q
+    ? {
+        OR: [
+          { orderCode: { contains: q } },
+          { id: { contains: q } },
+          { buyerSnapshot: { contains: q } },
+          { tickets: { some: { ticketCode: { contains: q } } } },
+          { tickets: { some: { participantName: { contains: q } } } },
+          { tickets: { some: { seat: { seatLabel: { contains: q } } } } },
+        ],
+      }
+    : {};
+
   const orders = await prisma.order.findMany({
+    where,
     orderBy: { createdAt: "desc" },
     include: { event: true, payments: true, tickets: true },
   });

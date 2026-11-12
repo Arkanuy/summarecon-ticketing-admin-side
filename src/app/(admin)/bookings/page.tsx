@@ -11,29 +11,45 @@ export const metadata = { title: "Booking" };
 const FILTERS = ["PENDING", "PAID", "EXPIRED", "PARTIALLY_REFUNDED", "REFUNDED"] as const;
 
 /**
- * Daftar order dengan filter event dan status.
- * Filter disimpan di URL (?event=&status=) supaya bisa dibagikan dan tahan reload.
+ * Daftar order dengan pencarian dan filter event/status.
+ *
+ * Semua state hidup di URL (?q=&event=&status=) supaya bisa dibagikan ke panitia
+ * lain dan tahan reload. Pencarian menyasar kode order, ID order, nama/email pemesan,
+ * kode tiket, nama peserta, dan label kursi — panitia biasanya datang dengan salah
+ * satu dari itu saat peserta menghubungi di hari-H.
  */
 export default async function BookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ event?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; event?: string; status?: string }>;
 }) {
   await requireAdminPage();
 
-  const { event: eventFilter, status: statusFilter } = await searchParams;
-  const [allOrders, events] = await Promise.all([getAdminOrders(), getAdminEvents()]);
+  const { q: rawQuery, event: eventFilter, status: statusFilter } = await searchParams;
+  const query = (rawQuery ?? "").trim();
 
-  const orders = allOrders.filter(
+  /* Dua kueri: satu untuk angka total (tanpa filter), satu untuk hasil yang ditampilkan. */
+  const [allOrders, events, matched] = await Promise.all([
+    getAdminOrders(),
+    getAdminEvents(),
+    query ? getAdminOrders(query) : Promise.resolve(null),
+  ]);
+
+  const searched = matched ?? allOrders;
+  const orders = searched.filter(
     (o) =>
       (!eventFilter || o.eventId === eventFilter) &&
       (!statusFilter || o.orderStatus === statusFilter),
   );
 
-  const qs = (next: { event?: string; status?: string }) => {
+  const hasFilter = Boolean(query || eventFilter || statusFilter);
+
+  const qs = (next: { q?: string; event?: string; status?: string }) => {
     const p = new URLSearchParams();
+    const v = next.q ?? query;
     const e = next.event ?? eventFilter;
     const s = next.status ?? statusFilter;
+    if (v) p.set("q", v);
     if (e) p.set("event", e);
     if (s) p.set("status", s);
     const str = p.toString();
@@ -49,11 +65,36 @@ export default async function BookingsPage({
           <h1 className="page-title">Booking</h1>
           <p className="page-lead">
             {orders.length}
-            {eventFilter || statusFilter ? ` dari ${allOrders.length}` : ""} order
-            {activeEvent ? ` · ${activeEvent.name}` : ""}. Status order dan status payment dipisah (§8.1–8.2).
+            {hasFilter ? ` dari ${allOrders.length}` : ""} order
+            {activeEvent ? ` · ${activeEvent.name}` : ""}
+            {query ? ` · cari "${query}"` : ""}. Status order dan status payment dipisah (§8.1–8.2).
           </p>
         </div>
       </div>
+
+      <form method="get" action="/bookings" className="search-bar" role="search">
+        <label htmlFor="q" className="sr-only">
+          Cari order
+        </label>
+        <input
+          id="q"
+          name="q"
+          type="search"
+          defaultValue={query}
+          placeholder="Cari kode order, ID, nama, email, kode tiket, atau kursi"
+          autoComplete="off"
+        />
+        {eventFilter ? <input type="hidden" name="event" value={eventFilter} /> : null}
+        {statusFilter ? <input type="hidden" name="status" value={statusFilter} /> : null}
+        <button type="submit" className="button button-primary">
+          Cari
+        </button>
+        {query ? (
+          <Link href={qs({ q: "" })} className="button button-secondary">
+            Hapus
+          </Link>
+        ) : null}
+      </form>
 
       <div className="chips" style={{ marginBottom: 10 }}>
         <Link href={qs({ event: "", status: "" })} className="chip" aria-pressed={!eventFilter && !statusFilter}>
@@ -63,12 +104,7 @@ export default async function BookingsPage({
           const count = allOrders.filter((o) => o.eventId === e.id).length;
           if (count === 0) return null;
           return (
-            <Link
-              key={e.id}
-              href={qs({ event: e.id })}
-              className="chip"
-              aria-pressed={eventFilter === e.id}
-            >
+            <Link key={e.id} href={qs({ event: e.id })} className="chip" aria-pressed={eventFilter === e.id}>
               {e.name} {count}
             </Link>
           );
@@ -103,7 +139,13 @@ export default async function BookingsPage({
           </thead>
           <tbody>
             {orders.length === 0 ? (
-              <tr><td colSpan={9} className="empty">Tidak ada order untuk filter ini.</td></tr>
+              <tr>
+                <td colSpan={9} className="empty">
+                  {query
+                    ? `Tidak ada order yang cocok dengan "${query}". Coba kode order, nama peserta, atau nomor kursi.`
+                    : "Tidak ada order untuk filter ini."}
+                </td>
+              </tr>
             ) : (
               orders.map((o) => (
                 <tr key={o.id}>

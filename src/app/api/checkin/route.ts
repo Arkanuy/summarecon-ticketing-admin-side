@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { ok, badRequest, fail, notFound } from "@/lib/api";
+import { ok, badRequest, fail } from "@/lib/api";
 import { requireAdmin } from "@/lib/auth/guard";
 import { resolveQrToken } from "@/lib/qr/resolve";
 

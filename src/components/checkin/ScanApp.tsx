@@ -33,16 +33,7 @@ export function ScanApp() {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [log, setLog] = useState<{ id: string; name: string; scan: string; at: string }[]>([]);
 
-  useEffect(() => {
-    const savedCode = sessionStorage.getItem(CODE_KEY);
-    const savedEvent = sessionStorage.getItem(EVENT_KEY) ?? "";
-    if (savedCode) {
-      setCode(savedCode);
-      void authorize(savedCode, savedEvent);
-    }
-  }, []);
-
-  const authorize = async (value: string, preferredEvent = "") => {
+  const authorize = useCallback(async (value: string, preferredEvent = "") => {
     setAuthError(null);
     const response = await fetch("/api/checkin/public", { headers: { "x-scan-code": value } });
     if (!response.ok) {
@@ -61,7 +52,27 @@ export function ScanApp() {
     if (pick) sessionStorage.setItem(EVENT_KEY, pick.event_id);
     sessionStorage.setItem(CODE_KEY, value);
     setAuthed(true);
-  };
+  }, []);
+
+  /*
+   * Autentikasi ulang dari kode akses yang tersimpan. Dipanggil setelah mount
+   * (bukan langsung di badan effect) karena `authorize` memanggil setState:
+   * setState di dalam effect memicu render berantai.
+   */
+  useEffect(() => {
+    const savedCode = sessionStorage.getItem(CODE_KEY);
+    const savedEvent = sessionStorage.getItem(EVENT_KEY) ?? "";
+    if (!savedCode) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setCode(savedCode);
+      void authorize(savedCode, savedEvent);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authorize]);
 
   const stopCamera = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -108,11 +119,15 @@ export function ScanApp() {
     [eventId],
   );
 
+  /* Sama seperti CheckinScanner: loop rAF memakai ref, bukan menyebut `tick`
+     di dalam dirinya sendiri. */
+  const tickRef = useRef<() => void>(() => {});
+
   const tick = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || video.readyState < 2) {
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(tickRef.current);
       return;
     }
     const w = video.videoWidth;
@@ -137,8 +152,13 @@ export function ScanApp() {
         }
       }
     }
-    rafRef.current = requestAnimationFrame(tick);
+    rafRef.current = requestAnimationFrame(tickRef.current);
   }, [submit]);
+
+  /* Jaga ref menunjuk versi terbaru sebelum loop pertama dimulai. */
+  useEffect(() => {
+    tickRef.current = tick;
+  }, [tick]);
 
   const startCamera = async () => {
     setCameraError(null);
@@ -158,7 +178,7 @@ export function ScanApp() {
       video.srcObject = stream;
       await video.play();
       setCamera("on");
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(tickRef.current);
     } catch (e) {
       const name = (e as DOMException)?.name;
       setCamera(name === "NotAllowedError" ? "denied" : "off");

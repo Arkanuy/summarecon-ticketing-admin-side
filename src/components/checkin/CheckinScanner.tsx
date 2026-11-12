@@ -81,11 +81,19 @@ export function CheckinScanner({
     [eventId],
   );
 
+  /*
+   * tick menyebut dirinya sendiri lewat requestAnimationFrame. Memakai `tick`
+   * langsung di dalam useCallback adalah referensi ke variabel yang belum
+   * dideklarasikan (react-hooks tidak bisa memverifikasinya). Ref ini selalu
+   * menunjuk versi terbaru, jadi loop tetap memakai `send` paling baru.
+   */
+  const tickRef = useRef<() => void>(() => {});
+
   const tick = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || video.readyState < 2) {
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(tickRef.current);
       return;
     }
 
@@ -113,8 +121,13 @@ export function CheckinScanner({
         }
       }
     }
-    rafRef.current = requestAnimationFrame(tick);
+    rafRef.current = requestAnimationFrame(tickRef.current);
   }, [send]);
+
+  /* Jaga ref menunjuk versi terbaru supaya loop selalu memakai `send` terkini. */
+  useEffect(() => {
+    tickRef.current = tick;
+  }, [tick]);
 
   const start = async () => {
     setError(null);
@@ -136,7 +149,7 @@ export function CheckinScanner({
       video.srcObject = stream;
       await video.play();
       setState("running");
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(tickRef.current);
     } catch (e) {
       const name = (e as DOMException)?.name;
       setState(name === "NotAllowedError" ? "denied" : "idle");
