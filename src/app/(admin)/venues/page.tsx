@@ -33,12 +33,12 @@ export default async function VenuesPage() {
         {venues.map((v) => (
           <Card key={v.id}>
             <div className="event-category">{v.code} · {TYPE_LABEL[v.type] ?? v.type}</div>
-            <Link href={`/venues/${v.id}`} className="event-card-title" style={{ marginTop: 8, display: "block" }}>
+            <Link href={`/venues/${v.id}`} className="event-card-title">
               {v.name}
             </Link>
             <p className="sub">{v.location}{v.floor ? ` · ${v.floor}` : ""}</p>
 
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+            <div className="event-card-badges">
               <Badge tone={v.status === "ACTIVE" ? "ok" : "muted"}>{v.status}</Badge>
               <Badge tone="muted">{v.templates.length} layout</Badge>
               <Badge tone="muted">{v.eventCount} event</Badge>
